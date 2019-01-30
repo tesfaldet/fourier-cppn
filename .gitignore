@@ -4,10 +4,6 @@
 *.mov
 *.mp4
 
-# Logs and snapshots
-logs/
-snapshots/
-
 # Visualstudio
 .vscode/
 

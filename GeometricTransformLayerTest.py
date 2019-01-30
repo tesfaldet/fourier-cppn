@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import cv2
-import src.utils.load_image as load_image
+from src.utils.load_image import load_image
 import os
 from src.layers.TransformLayers import GeometricTransformLayer
 
@@ -29,10 +29,10 @@ input = tf.placeholder(dtype=tf.float32, shape=[None] + list(im_shape),
                        name='input')
 
 # transform params
-slant = np.radians(22.5)
-tilt = np.radians(0)
+slant = np.radians(45)
+tilt = np.radians(45)
 f = -400
-z_0 = -100
+z_0 = -400
 
 
 # main computation

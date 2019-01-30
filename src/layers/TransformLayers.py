@@ -9,8 +9,8 @@ def GeometricTransformLayer(input, slant, tilt, f, z_0):
 
 	# meshgrid for warping (in image coords, y down)
 	# (0,0) is the centre of the image
-	x_coords, y_coords = tf.meshgrid(range(-im_shape[1]/2, im_shape[1]/2),
-		                             range(im_shape[0]/2, -im_shape[0]/2, -1))
+	x_coords, y_coords = tf.meshgrid(list(range(int(-im_shape[1]/2), int(im_shape[1]/2))),
+		                             list(range(int(im_shape[0]/2), int(-im_shape[0]/2), -1)))
 
 	# reshape, concat, and cast to float32
 	xy_coords = tf.cast(tf.concat([tf.reshape(x_coords, [1, -1]),

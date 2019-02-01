@@ -3,7 +3,7 @@ import numpy as np
 from src.layers import *
 
 
-class TextureModule:
+class TextureMappingNetwork:
     def __init__(self,
                  config):
         self.config = config

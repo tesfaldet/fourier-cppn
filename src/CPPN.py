@@ -3,7 +3,7 @@ import numpy as np
 from src.layers import *
 
 
-class TextureModule:
+class CPPN:
     def __init__(self,
                  config):
         self.config = config
@@ -16,4 +16,13 @@ class TextureModule:
         pass
 
     def build_summaries(self):
+        pass
+
+    def train(self):
+        pass
+
+    def validate(self):
+        pass
+
+    def predict(self):
         pass

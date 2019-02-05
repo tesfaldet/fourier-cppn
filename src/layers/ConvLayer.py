@@ -8,7 +8,7 @@ def ConvLayer(name, input, out_channels, ksize=1, stride=1,
 
     with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
         w = tf.get_variable('weight',
-                            initializer=tf.initializers.random_uniform(0, 1),
+                            initializer=tf.initializers.random_uniform(-0.5, 0.5),
                             shape=shape_in, trainable=trainable)
         b = tf.get_variable('bias', initializer=tf.constant(0.0,
                             shape=[out_channels], dtype=tf.float32),

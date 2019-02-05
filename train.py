@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description='training')
 parser.add_argument('-g', '--gpu', default=1, type=int)
 parser.add_argument('-b', '--batch_size', default=1, type=int)
 parser.add_argument('-i', '--iterations', default=5000, type=int)
-parser.add_argument('-lr', '--learning_rate', default=1e-2, type=float)
+parser.add_argument('-lr', '--learning_rate', default=1e-5, type=float)
 parser.add_argument('-logf', '--log_frequency', default=10, type=int)
 parser.add_argument('-printf', '--print_frequency', default=10, type=int)
 parser.add_argument('-snapf', '--snapshot_frequency', default=500, type=int)
@@ -37,7 +37,7 @@ tf_config.gpu_options.allow_growth = True
 tf_config.allow_soft_placement = True
 
 # DATA INPUT
-target = load_image('data/textures/1.1.01.tiff')
+target = load_image('data/cat.jpg')
 
 # BUILD GRAPH
 with tf.device('/gpu:' + str(args.gpu)):

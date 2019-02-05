@@ -32,13 +32,13 @@ class CPPN:
         # CPPN OUTPUT
         with tf.name_scope('CPPN'):
             self.fc1 = ConvLayer('fc1', self.input, 20)
-            # self.fc2 = ConvLayer('fc2', self.fc1, 20)
-            # self.fc3 = ConvLayer('fc3', self.fc2, 20)
-            # self.fc4 = ConvLayer('fc4', self.fc3, 20)
-            # self.fc5 = ConvLayer('fc5', self.fc4, 20)
-            # self.fc6 = ConvLayer('fc6', self.fc5, 20)
-            # self.fc7 = ConvLayer('fc7', self.fc6, 20)
-            self.output = ConvLayer('output', self.fc1, 3)
+            self.fc2 = ConvLayer('fc2', self.fc1, 20)
+            self.fc3 = ConvLayer('fc3', self.fc2, 20)
+            self.fc4 = ConvLayer('fc4', self.fc3, 20)
+            self.fc5 = ConvLayer('fc5', self.fc4, 20)
+            self.fc6 = ConvLayer('fc6', self.fc5, 20)
+            self.fc7 = ConvLayer('fc7', self.fc6, 20)
+            self.output = ConvLayer('output', self.fc7, 3)
 
         # OBJECTIVE
         with tf.name_scope('Loss'):
@@ -50,9 +50,9 @@ class CPPN:
     def build_summaries(self):
         with tf.name_scope('Summaries'):
             # Output and Target
-            tf.summary.image('Output', tf.cast(self.output,
+            tf.summary.image('Output', tf.cast(self.output * 255.0,
                                                tf.uint8), max_outputs=6)
-            tf.summary.image('Target', tf.cast(self.target,
+            tf.summary.image('Target', tf.cast(self.target * 255.0,
                                                tf.uint8), max_outputs=6)
 
             # Losses

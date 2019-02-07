@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 from src.utils.load_image import load_image
 import os
-from src.layers.TransformLayers import GeometricTransformLayer
+from src.layers.TransformLayers import SpatialTransformerLayer
 
 # prevent tf from using other GPUs
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'   # see issue #152
@@ -17,27 +17,25 @@ config_proto.allow_soft_placement = True
 config_proto.log_device_placement = False
 
 # loading data
-im = load_image('data/textures/1.1.01.tiff')
+im = load_image('data/cppn_sunflowers.png')[..., ::-1]
 
 # add batch dimension
 im = np.expand_dims(im, 0)
 
 im_shape = im.shape[1:]
 
+# affine transformation
+transformation = tf.constant([[1, 2, 50],
+                              [0, 1, 25],
+                              [0, 0, 1]], dtype=tf.float32)
+
 # preparing placeholders
 input = tf.placeholder(dtype=tf.float32, shape=[None] + list(im_shape),
                        name='input')
 
-# transform params
-slant = np.radians(45)
-tilt = np.radians(45)
-f = -400
-z_0 = -400
-
-
 # main computation
 with tf.device('/gpu:' + gpu):
-    warped = GeometricTransformLayer(input, slant, tilt, f, z_0)
+    warped = SpatialTransformerLayer(input, transformation)
 
 
 # retrieve output

@@ -1,37 +1,32 @@
 import tensorflow as tf
-import numpy as np
+from src.utils.create_meshgrid import create_meshgrid
 
 
-# warp the image to the given the slant, tilt, and surface distance.
-# focal length needed
-def GeometricTransformLayer(input, slant, tilt, f, z_0):
-    im_shape = input.get_shape().as_list()[1:]
+# transform the image with the given transformation parameters
+# input shape [1, height, width, 3]
+# transformation shape [3, 3]
+def SpatialTransformerLayer(input, transformation):
+    shape = input.get_shape().as_list()
+    height = shape[1]
+    width = shape[2]
 
-    # meshgrid for warping (in image coords, y down)
-    # (0,0) is the centre of the image
-    x_coords, y_coords = tf.meshgrid(list(range(int(-im_shape[1]/2),
-                                                int(im_shape[1]/2))),
-                                     list(range(int(im_shape[0]/2),
-                                                int(-im_shape[0]/2), -1)))
+    # xy_coords shape [1, height, width, 2]
+    xy_coords = create_meshgrid(width, height, 0, width-1, 0, height-1)
+    x_coords = xy_coords[0, :, :, 0]  # [height, width]
+    y_coords = xy_coords[0, :, :, 1]
+    z_coords = tf.ones(shape=tf.shape(y_coords))  # homogeneous coords
+    xyz_coords = tf.concat([tf.reshape(x_coords, [1, -1]),
+                            tf.reshape(y_coords, [1, -1]),
+                            tf.reshape(z_coords, [1, -1])], 0)  # [3, N]
 
-    # reshape, concat, and cast to float32
-    xy_coords = tf.cast(tf.concat([tf.reshape(x_coords, [1, -1]),
-                                   tf.reshape(y_coords, [1, -1])], 0),
-                                   tf.float32)  # [2, N]
+    # Apply inverse transformation
+    inv_transformation = tf.matrix_inverse(transformation)
+    transformed_xyz_coords = tf.matmul(inv_transformation, xyz_coords)  # [3, N]
 
-    # image-to-surface (inverse of s2i)
-    dot = tf.matmul(tf.reshape([np.cos(tilt), np.sin(tilt)], [1, 2]),
-                               xy_coords)  # [1, N]
-    z = z_0 / (np.sin(slant)*dot + f*np.cos(slant))  # [1, N]
-    i2s = tf.reshape([[np.cos(tilt), np.sin(tilt)],
-                      [-np.cos(slant)*np.sin(tilt),
-                       np.cos(slant)*np.cos(tilt)]],
-                     [2, 2])  # [2, 2]
-    xy_coords = z * tf.matmul(i2s, xy_coords)  # [2, N]
-    xy_coords = tf.stack([xy_coords[0]+im_shape[1]/2, -(xy_coords[1]-im_shape[0]/2)], 0)  # switching coord systems
-    warp = tf.reshape(xy_coords, [2, im_shape[0], im_shape[1]])
-    warp = tf.transpose(warp, [1, 2, 0])
-    warp = tf.expand_dims(warp, 0)
+    warp = tf.reshape(transformed_xyz_coords[:2], [2, height, width])
+    warp = tf.transpose(warp, [1, 2, 0])  # [height, width, 2]
+    warp = tf.expand_dims(warp, 0)  # [1, height, width, 2]
+    # TODO: will need to tile warp to support batch size > 1
     warped = tf.contrib.resampler.resampler(input, warp)
 
     return warped

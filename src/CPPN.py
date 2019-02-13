@@ -3,6 +3,7 @@ import numpy as np
 from src.layers.ConvLayer import ConvLayer
 from src.utils.create_meshgrid import create_meshgrid
 from src.utils.check_snapshots import check_snapshots
+from src.InceptionV1 import InceptionV1
 
 
 class CPPN:
@@ -19,14 +20,16 @@ class CPPN:
                       for x in tf.all_variables()]))
 
     def build_graph(self):
-        with tf.name_scope('Target'):
-            self.target = tf.expand_dims(tf.constant(self.target), axis=0)
-            image_shape = self.target.get_shape().as_list()
-            self.width = image_shape[1]
-            self.height = image_shape[2]
+        # with tf.name_scope('Target'):
+        #     self.target = tf.expand_dims(tf.constant(self.target), axis=0)
+        #     image_shape = self.target.get_shape().as_list()
+        #     self.width = image_shape[1]
+        #     self.height = image_shape[2]
 
         # COORDINATE MESHGRID INPUT
         with tf.name_scope('Input'):
+            self.width = 224
+            self.height = 224
             self.input = create_meshgrid(self.width, self.height)
 
         # CPPN OUTPUT
@@ -41,9 +44,11 @@ class CPPN:
             self.output = ConvLayer('output', self.fc7, 3)
 
         # OBJECTIVE
-        with tf.name_scope('Loss'):
-            self.loss = tf.nn.l2_loss(self.output - self.target) \
-                / tf.to_float(self.my_config['batch_size'])
+        # with tf.name_scope('Loss'):
+            # self.loss = tf.nn.l2_loss(self.output - self.target) \
+                # / tf.to_float(self.my_config['batch_size'])
+        self.loss = -InceptionV1('InceptionV1Loss', self.output)\
+            .avg_channel("mixed4b_3x3_pre_relu", 77)
 
         self.build_summaries()
 
@@ -52,14 +57,11 @@ class CPPN:
             # Output and Target
             tf.summary.image('Output', tf.cast(self.output * 255.0,
                                                tf.uint8), max_outputs=6)
-            tf.summary.image('Target', tf.cast(self.target * 255.0,
-                                               tf.uint8), max_outputs=6)
+            # tf.summary.image('Target', tf.cast(self.target * 255.0,
+                                            #    tf.uint8), max_outputs=6)
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)
-
-            tf.summary.scalar('min_input', tf.math.reduce_min(self.input))
-            tf.summary.scalar('max_input', tf.math.reduce_max(self.input))
 
             # Merge all summaries
             self.summaries = tf.summary.merge_all()

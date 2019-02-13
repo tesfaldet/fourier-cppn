@@ -21,6 +21,7 @@ class InceptionV1(object):
         return tf.get_default_graph()\
             .get_tensor_by_name('{0}/{1}:0'.format(self.name, name))\
 
+
     # reduce mean spatially for a given channel of a layer
     def avg_channel(self, name, n_channel):
         layer = self.get_layer(name)

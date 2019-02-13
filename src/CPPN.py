@@ -30,18 +30,21 @@ class CPPN:
         with tf.name_scope('Input'):
             self.width = 224
             self.height = 224
-            self.input = create_meshgrid(self.width, self.height)
+            r = 3.0**0.5  # std(coord_range) == 1.0
+            self.input = create_meshgrid(self.width, self.height, -r, r, -r, r)
 
         # CPPN OUTPUT
         with tf.name_scope('CPPN'):
-            self.fc1 = ConvLayer('fc1', self.input, 20)
-            self.fc2 = ConvLayer('fc2', self.fc1, 20)
-            self.fc3 = ConvLayer('fc3', self.fc2, 20)
-            self.fc4 = ConvLayer('fc4', self.fc3, 20)
-            self.fc5 = ConvLayer('fc5', self.fc4, 20)
-            self.fc6 = ConvLayer('fc6', self.fc5, 20)
-            self.fc7 = ConvLayer('fc7', self.fc6, 20)
-            self.output = ConvLayer('output', self.fc7, 3)
+            self.fc1 = ConvLayer('fc1', self.input, 24, activation='atan')
+            self.fc2 = ConvLayer('fc2', self.fc1, 24, activation='atan')
+            self.fc3 = ConvLayer('fc3', self.fc2, 24, activation='atan')
+            self.fc4 = ConvLayer('fc4', self.fc3, 24, activation='atan')
+            self.fc5 = ConvLayer('fc5', self.fc4, 24, activation='atan')
+            self.fc6 = ConvLayer('fc6', self.fc5, 24, activation='atan')
+            self.fc7 = ConvLayer('fc7', self.fc6, 24, activation='atan')
+            self.fc8 = ConvLayer('fc8', self.fc7, 24, activation='atan')
+            self.output = ConvLayer('output', self.fc8, 3, zeros=True,
+                                    activation='sigmoid')
 
         # OBJECTIVE
         # with tf.name_scope('Loss'):
@@ -68,9 +71,8 @@ class CPPN:
 
     def train(self):
         global_step = tf.Variable(0, trainable=False)
-        opt = tf.train.MomentumOptimizer(
-            learning_rate=self.my_config['learning_rate'],
-            momentum=0.9)
+        opt = tf.train.AdamOptimizer(
+            learning_rate=self.my_config['learning_rate'])
         train_step = opt.minimize(self.loss)
 
         saver = tf.train.Saver(max_to_keep=0, pad_step_number=16)

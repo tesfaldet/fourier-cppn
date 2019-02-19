@@ -9,25 +9,17 @@ from src.InceptionV1 import InceptionV1
 class CPPN:
     def __init__(self,
                  my_config,
-                 tf_config,
-                 target):
+                 tf_config):
         self.tf_config = tf_config
         self.my_config = my_config
-        self.target = target
         self.build_graph()
-        print('Num Variables: ',
+        print('CPPN Num Variables: ',
               np.sum([np.product([xi.value for xi in x.get_shape()])
                       for x in tf.all_variables()]))
 
     def build_graph(self):
-        # with tf.name_scope('Target'):
-        #     self.target = tf.expand_dims(tf.constant(self.target), axis=0)
-        #     image_shape = self.target.get_shape().as_list()
-        #     self.width = image_shape[1]
-        #     self.height = image_shape[2]
-
         # COORDINATE MESHGRID INPUT
-        with tf.name_scope('Input'):
+        with tf.name_scope('Meshgrid'):
             self.width = 224
             self.height = 224
             r = 3.0**0.5  # std(coord_range) == 1.0
@@ -35,33 +27,38 @@ class CPPN:
 
         # CPPN OUTPUT
         with tf.name_scope('CPPN'):
-            self.fc1 = ConvLayer('fc1', self.input, 24, activation='atan')
-            self.fc2 = ConvLayer('fc2', self.fc1, 24, activation='atan')
-            self.fc3 = ConvLayer('fc3', self.fc2, 24, activation='atan')
-            self.fc4 = ConvLayer('fc4', self.fc3, 24, activation='atan')
-            self.fc5 = ConvLayer('fc5', self.fc4, 24, activation='atan')
-            self.fc6 = ConvLayer('fc6', self.fc5, 24, activation='atan')
-            self.fc7 = ConvLayer('fc7', self.fc6, 24, activation='atan')
-            self.fc8 = ConvLayer('fc8', self.fc7, 24, activation='atan')
-            self.output = ConvLayer('output', self.fc8, 3, zeros=True,
+            init = \
+                tf.initializers.random_normal(0, tf.sqrt(1.0/24.0))
+            self.fc1 = ConvLayer('fc1', self.input, 24,
+                                 weight_init=init, activation='atan')
+            self.fc2 = ConvLayer('fc2', self.fc1, 24,
+                                 weight_init=init, activation='atan')
+            self.fc3 = ConvLayer('fc3', self.fc2, 24,
+                                 weight_init=init, activation='atan')
+            self.fc4 = ConvLayer('fc4', self.fc3, 24,
+                                 weight_init=init, activation='atan')
+            self.fc5 = ConvLayer('fc5', self.fc4, 24,
+                                 weight_init=init, activation='atan')
+            self.fc6 = ConvLayer('fc6', self.fc5, 24,
+                                 weight_init=init, activation='atan')
+            self.fc7 = ConvLayer('fc7', self.fc6, 24,
+                                 weight_init=init, activation='atan')
+            self.fc8 = ConvLayer('fc8', self.fc7, 24,
+                                 weight_init=init, activation='atan')
+            self.output = ConvLayer('output', self.fc8, 3,
                                     activation='sigmoid')
 
         # OBJECTIVE
-        # with tf.name_scope('Loss'):
-            # self.loss = tf.nn.l2_loss(self.output - self.target) \
-                # / tf.to_float(self.my_config['batch_size'])
-        self.loss = -InceptionV1('InceptionV1Loss', self.output)\
-            .avg_channel("mixed4b_3x3_pre_relu", 77)
+        # self.loss = -InceptionV1('InceptionV1Loss', self.output)\
+            # .avg_channel("mixed4b_3x3_pre_relu", 77)
 
-        self.build_summaries()
+        # self.build_summaries()
 
     def build_summaries(self):
         with tf.name_scope('Summaries'):
             # Output and Target
             tf.summary.image('Output', tf.cast(self.output * 255.0,
                                                tf.uint8), max_outputs=6)
-            # tf.summary.image('Target', tf.cast(self.target * 255.0,
-                                            #    tf.uint8), max_outputs=6)
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)

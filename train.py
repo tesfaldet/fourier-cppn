@@ -2,8 +2,7 @@ import os
 import time
 import argparse
 import tensorflow as tf
-from src.utils.load_image import load_image
-from src.CPPN import CPPN
+from src.TexturedCPPN import TexturedCPPN
 
 
 # COMMAND LINE ARGS
@@ -11,7 +10,7 @@ parser = argparse.ArgumentParser(description='training')
 parser.add_argument('-g', '--gpu', default=1, type=int)
 parser.add_argument('-b', '--batch_size', default=1, type=int)
 parser.add_argument('-i', '--iterations', default=5000, type=int)
-parser.add_argument('-lr', '--learning_rate', default=1e-5, type=float)
+parser.add_argument('-lr', '--learning_rate', default=5e-3, type=float)
 parser.add_argument('-logf', '--log_frequency', default=10, type=int)
 parser.add_argument('-printf', '--print_frequency', default=10, type=int)
 parser.add_argument('-snapf', '--snapshot_frequency', default=500, type=int)
@@ -36,12 +35,9 @@ tf_config = tf.ConfigProto()
 tf_config.gpu_options.allow_growth = True
 tf_config.allow_soft_placement = True
 
-# DATA INPUT
-target = load_image('data/cat.jpg')
-
 # BUILD GRAPH
 with tf.device('/gpu:' + str(args.gpu)):
-    m = CPPN(tf_config=tf_config, my_config=my_config, target=target)
+    m = TexturedCPPN(tf_config=tf_config, my_config=my_config)
 
 # TRAIN
 m.train()

@@ -1,19 +1,32 @@
 import tensorflow as tf
 import numpy as np
-from src.layers import *
+from src.layers.TransformLayers import \
+    SpatialTransformerLayer, PhotometricTransformLayer
 
 
+# input needs to be between [0, 1]
 class TextureModule:
     def __init__(self,
-                 config):
-        self.config = config
+                 name,
+                 input):
+        self.name = name
+        self.texture = input
         self.build_graph()
-        print('Num Variables: ',
+        print(name + 'Num Variables: ',
               np.sum([np.product([xi.value for xi in x.get_shape()])
                       for x in tf.all_variables()]))
 
     def build_graph(self):
-        pass
+        with tf.name_scope(self.name):
+            geometrically_transformed = \
+                SpatialTransformerLayer('SpatialTransform', self.texture)
+
+            photometrically_transformed = \
+                PhotometricTransformLayer('PhotoTransform',
+                                          geometrically_transformed)
+
+            # output is between [0, 1]
+            self.output = photometrically_transformed
 
     def build_summaries(self):
         pass

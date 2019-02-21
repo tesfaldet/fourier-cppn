@@ -4,6 +4,7 @@ from src.utils.check_snapshots import check_snapshots
 from src.CPPN import CPPN
 from src.TextureMappingNetwork import TextureMappingNetwork
 from src.InceptionV1 import InceptionV1
+from src.utils.load_image import load_image
 
 
 class TexturedCPPN:
@@ -26,16 +27,22 @@ class TexturedCPPN:
 
         with tf.variable_scope('mixing_params', reuse=tf.AUTO_REUSE):
             self.alpha = tf.get_variable('alpha',
-                                         initializer=tf.initializers.constant(0.5),
+                                         initializer=tf.initializers.constant(0.0),
                                          shape=[])
+            self.alpha = tf.nn.sigmoid(self.alpha)
 
         # Combine output from cppn and texture mapping network
-        self.output = self.alpha * self.cppn.output \
-            + (1 - self.alpha) * self.texture_mapping_network.output
+        # self.output = 0.5 * (self.alpha * self.cppn.output +
+                            #  (1 - self.alpha) *
+                            #  self.texture_mapping_network.output)
+        self.output = self.texture_mapping_network.output
 
         # OBJECTIVE
-        self.loss = -InceptionV1('InceptionV1Loss', self.output)\
-            .avg_channel("mixed4b_3x3_pre_relu", 77)
+        # self.loss = -InceptionV1('InceptionV1Loss', self.output)\
+            # .avg_channel("mixed4b_3x3_pre_relu", 77)
+        self.target = tf.image.resize_images(
+                load_image('data/textures/1.1.01.tiff'), [224, 224])
+        self.loss = tf.nn.l2_loss(self.target - self.output)
 
         self.build_summaries()
 
@@ -43,13 +50,15 @@ class TexturedCPPN:
         with tf.name_scope('Summaries'):
             # Output and Target
             tf.summary.image('Combined', tf.cast(self.output * 255.0,
-                                                 tf.uint8), max_outputs=6)
-            tf.summary.image('Texture', tf.cast(self.texture_mapping_network.output * 255.0,
-                                                tf.uint8), max_outputs=6)
-            tf.summary.image('CPPN', tf.cast(self.cppn.output * 255.0,
-                                                tf.uint8), max_outputs=6)
+                                                 tf.uint8))
+            # tf.summary.image('Texture', tf.cast(self.texture_mapping_network.output * 255.0,
+                                                # tf.uint8))
+            # tf.summary.image('CPPN', tf.cast(self.cppn.output * 255.0,
+                                                # tf.uint8))
 
-            tf.summary.scalar('alpha', self.alpha)
+            # tf.summary.scalar('alpha', self.alpha)
+            tf.summary.image('Target', tf.cast(self.target * 255.0,
+                                                 tf.uint8))
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)

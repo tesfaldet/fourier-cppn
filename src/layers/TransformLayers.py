@@ -27,8 +27,7 @@ def SpatialTransformerLayer(name, input, transformation=None, inverse=False,
         if transformation is None:
             with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
                 transformation = tf.get_variable('transformation_params',
-                                                 initializer=tf.initializers.identity(),
-                                                 shape=[3, 3],
+                                                 initializer=(tf.eye(3) * tf.random_normal([3, 3], 1.0, 0.5)),
                                                  trainable=trainable)
                 transformation = stop_gradients(transformation,
                                                 np.array([[1, 1, 1],
@@ -54,7 +53,7 @@ def PhotometricTransformLayer(name, input, trainable=True):
     with tf.name_scope(name):
         init = tf.initializers.ones()
         transformed = ConvLayer(name, input, 3,
-                                activation='sigmoid',
+                                activation='relu',
                                 weight_init=init,
                                 trainable=trainable)
         return transformed

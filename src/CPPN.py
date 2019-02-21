@@ -30,21 +30,21 @@ class CPPN:
             init = \
                 tf.initializers.random_normal(0, tf.sqrt(1.0/24.0))
             self.fc1 = ConvLayer('fc1', self.input, 24,
-                                 weight_init=init, activation='atan')
+                                 weight_init=init, activation='atan_concat')
             self.fc2 = ConvLayer('fc2', self.fc1, 24,
-                                 weight_init=init, activation='atan')
+                                 weight_init=init, activation='atan_concat')
             self.fc3 = ConvLayer('fc3', self.fc2, 24,
-                                 weight_init=init, activation='atan')
+                                 weight_init=init, activation='atan_concat')
             self.fc4 = ConvLayer('fc4', self.fc3, 24,
-                                 weight_init=init, activation='atan')
+                                 weight_init=init, activation='atan_concat')
             self.fc5 = ConvLayer('fc5', self.fc4, 24,
-                                 weight_init=init, activation='atan')
+                                 weight_init=init, activation='atan_concat')
             self.fc6 = ConvLayer('fc6', self.fc5, 24,
-                                 weight_init=init, activation='atan')
+                                 weight_init=init, activation='atan_concat')
             self.fc7 = ConvLayer('fc7', self.fc6, 24,
-                                 weight_init=init, activation='atan')
+                                 weight_init=init, activation='atan_concat')
             self.fc8 = ConvLayer('fc8', self.fc7, 24,
-                                 weight_init=init, activation='atan')
+                                 weight_init=init, activation='atan_concat')
             self.output = ConvLayer('output', self.fc8, 3,
                                     activation='sigmoid')
 

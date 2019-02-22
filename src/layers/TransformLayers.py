@@ -53,7 +53,7 @@ def PhotometricTransformLayer(name, input, trainable=True):
     with tf.name_scope(name):
         init = tf.initializers.ones()
         transformed = ConvLayer(name, input, 3,
-                                activation='relu',
+                                activation='sigmoid',
                                 weight_init=init,
                                 trainable=trainable)
         return transformed

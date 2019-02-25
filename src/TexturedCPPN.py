@@ -4,6 +4,7 @@ from src.utils.check_snapshots import check_snapshots
 from src.CPPN import CPPN
 from src.TextureMappingNetwork import TextureMappingNetwork
 from src.utils.load_image import load_image
+from src.PerceptualLoss import PerceptualLoss
 
 
 class TexturedCPPN:
@@ -30,7 +31,7 @@ class TexturedCPPN:
         # OBJECTIVE
         self.target = tf.image.resize_images(
                 load_image('data/textures/1.1.01.tiff'), [224, 224])
-        self.loss = tf.nn.l2_loss(self.target - self.output)
+        self.loss = PerceptualLoss(self.output, self.target).style_loss
 
         self.build_summaries()
 

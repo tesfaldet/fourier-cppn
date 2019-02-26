@@ -15,7 +15,7 @@ class TexturedCPPN:
         self.build_graph()
         print('TexturedCPPN Num Variables: ',
               np.sum([np.product([xi.value for xi in x.get_shape()])
-                      for x in tf.all_variables()]))
+                      for x in tf.global_variables()]))
 
     def build_graph(self):
         # Build CPPN

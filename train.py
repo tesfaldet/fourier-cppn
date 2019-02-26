@@ -35,15 +35,12 @@ my_config['iterations'] = args.iterations
 my_config.update(get_hparams())
 
 # GPU SETTINGS
-os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 tf_config = tf.ConfigProto()
 tf_config.gpu_options.allow_growth = True
 tf_config.allow_soft_placement = True
 
 # BUILD GRAPH
-with tf.device('/gpu:' + str(args.gpu)):
-    m = TexturedCPPN(tf_config=tf_config, my_config=my_config)
+m = TexturedCPPN(tf_config=tf_config, my_config=my_config)
 
 # TRAIN
 m.train()

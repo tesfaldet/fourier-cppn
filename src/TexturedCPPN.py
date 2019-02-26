@@ -52,8 +52,8 @@ class TexturedCPPN:
                                                 tf.uint8))
 
             tf.summary.scalar('alpha', self.alpha)
-            tf.summary.image('Target', tf.cast(self.target * 255.0,
-                                                 tf.uint8))
+            # tf.summary.image('Target', tf.cast(self.target * 255.0,
+            #                                      tf.uint8))
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)
@@ -100,7 +100,7 @@ class TexturedCPPN:
                 if i % self.my_config['snapshot_frequency'] == 0 and \
                    i != iterations_so_far:
                     print('Saving Snapshot...')
-                    saver.save(sess, 'snapshots/' +
+                    saver.save(sess, self.my_config'snapshots/' +
                                self.my_config['run_id'] + '/' +
                                'snapshot_iter', global_step=i)
 

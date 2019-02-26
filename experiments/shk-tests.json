@@ -1,0 +1,17 @@
+{
+    "title": "Tests",
+    "worker_config": {
+        "memory": 8,
+        "cpu": 2,
+        "gpu": 1
+    },
+    "parameters": {
+        "name": "GridSearch",
+        "config": {
+            "dimensions": {
+                "learning_rate": [0.0001, 0.001],
+                "batch_size": [1, 2]
+            }
+        }
+    }
+}

@@ -4,6 +4,7 @@ from src.utils.check_snapshots import check_snapshots
 from src.CPPN import CPPN
 from src.TextureMappingNetwork import TextureMappingNetwork
 from src.PerceptualLoss import PerceptualLoss
+from src.layers.MSELayer import MSELayer
 from src.utils.create_image import plaid_pattern
 
 
@@ -30,7 +31,9 @@ class TexturedCPPN:
 
         # OBJECTIVE
         self.target = tf.to_float(plaid_pattern(224, 15))
-        self.loss = PerceptualLoss(self.output, self.target).style_loss
+        self.loss = 1e5 * PerceptualLoss(self.output, self.target,
+                                         style_layers=['pool4']).style_loss
+        # self.loss = MSELayer(self.output, self.target)
 
         self.build_summaries()
 

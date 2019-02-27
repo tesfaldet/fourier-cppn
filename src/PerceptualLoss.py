@@ -32,6 +32,9 @@ class PerceptualLoss(object):
             self.style_loss = self._style_loss(vgg19_predicted,
                                                vgg19_target,
                                                self.style_layers)
+            self.content_loss = self._content_loss(vgg19_predicted,
+                                                   vgg19_target,
+                                                   self.content_layers)
 
     def _style_loss(self, vgg_predicted, vgg_target, style_layers):
         with tf.name_scope('StyleLoss'):

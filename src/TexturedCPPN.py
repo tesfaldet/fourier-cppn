@@ -3,8 +3,8 @@ import numpy as np
 from src.utils.check_snapshots import check_snapshots
 from src.CPPN import CPPN
 from src.TextureMappingNetwork import TextureMappingNetwork
-from src.utils.load_image import load_image
 from src.PerceptualLoss import PerceptualLoss
+from src.utils.create_image import plaid_pattern
 
 
 class TexturedCPPN:
@@ -29,8 +29,7 @@ class TexturedCPPN:
         self.output = self.texture_mapping_network.output
 
         # OBJECTIVE
-        self.target = tf.image.resize_images(
-                load_image('data/textures/1.1.01.tiff'), [224, 224])
+        self.target = tf.to_float(plaid_pattern(224, 15))
         self.loss = PerceptualLoss(self.output, self.target).style_loss
 
         self.build_summaries()
@@ -38,10 +37,8 @@ class TexturedCPPN:
     def build_summaries(self):
         with tf.name_scope('Summaries'):
             # Output and Target
-            tf.summary.image('Output', tf.cast(self.output * 255.0,
-                                                 tf.uint8))
-            tf.summary.image('Target', tf.cast(self.target * 255.0,
-                                                 tf.uint8))
+            tf.summary.image('Output', tf.cast(self.output * 255.0, tf.uint8))
+            tf.summary.image('Target', tf.cast(self.target * 255.0, tf.uint8))
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)

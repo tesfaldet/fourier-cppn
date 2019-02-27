@@ -19,11 +19,13 @@ class TextureModule:
     def build_graph(self):
         with tf.name_scope(self.name):
             geometrically_transformed = \
-                SpatialTransformerLayer('SpatialTransform', self.texture)
+                SpatialTransformerLayer('SpatialTransform_' + self.name,
+                                        self.texture)
 
             photometrically_transformed = \
-                PhotometricTransformLayer('PhotoTransform',
-                                          geometrically_transformed)
+                PhotometricTransformLayer('PhotoTransform_' + self.name,
+                                          geometrically_transformed,
+                                          trainable=False)
 
             # output is between [0, 1]
             self.output = photometrically_transformed

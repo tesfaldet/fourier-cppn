@@ -20,12 +20,11 @@ class TextureModule:
         with tf.name_scope(self.name):
             geometrically_transformed = \
                 SpatialTransformerLayer('SpatialTransform_' + self.name,
-                                        self.texture)
+                                        self.texture, trainable=False)
 
             photometrically_transformed = \
                 PhotometricTransformLayer('PhotoTransform_' + self.name,
-                                          geometrically_transformed,
-                                          trainable=False)
+                                          geometrically_transformed)
 
             # output is between [0, 1]
             self.output = photometrically_transformed

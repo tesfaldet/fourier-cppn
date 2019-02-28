@@ -5,7 +5,7 @@ from src.CPPN import CPPN
 from src.TextureMappingNetwork import TextureMappingNetwork
 from src.PerceptualLoss import PerceptualLoss
 from src.layers.MSELayer import MSELayer
-from src.utils.create_image import plaid_pattern
+from src.utils.load_image import load_image
 
 
 class TexturedCPPN:
@@ -30,9 +30,12 @@ class TexturedCPPN:
         self.output = self.texture_mapping_network.output
 
         # OBJECTIVE
-        self.target = tf.to_float(plaid_pattern(224, 15))
+        self.target = tf.image.resize_images(
+            load_image('data/textures/pebbles.jpg'), [224, 224])
         self.loss = 1e5 * PerceptualLoss(self.output, self.target,
-                                         style_layers=['pool4']).style_loss
+                                         style_layers=['conv1_1/Relu',
+                                                       'pool1', 'pool2',
+                                                       'pool3', 'pool4']).style_loss
         # self.loss = MSELayer(self.output, self.target)
 
         self.build_summaries()

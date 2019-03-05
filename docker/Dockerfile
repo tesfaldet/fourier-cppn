@@ -9,7 +9,7 @@ ENV LD_LIBRARY_PATH /usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cud
 ARG PIP_EXTRA_INDEX_URL
 RUN pip install --upgrade pip
 RUN pip install opencv-python lucid \
-  eai-shuriken
+  eai-shuriken scipy numpy
 
 WORKDIR /src
 COPY . .

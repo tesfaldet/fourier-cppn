@@ -6,6 +6,7 @@ from src.TextureMappingNetwork import TextureMappingNetwork
 from src.PerceptualLoss import PerceptualLoss
 from src.layers.MSELayer import MSELayer
 from src.utils.load_image import load_image
+from src.InceptionV1 import InceptionV1
 
 
 class TexturedCPPN:
@@ -27,7 +28,7 @@ class TexturedCPPN:
         self.texture_mapping_network = TextureMappingNetwork()
 
         # Combine output from cppn and texture mapping network
-        self.output = self.texture_mapping_network.output
+        self.output = self.cppn.output + self.texture_mapping_network.output
 
         # OBJECTIVE
         self.target = tf.image.resize_images(
@@ -37,6 +38,9 @@ class TexturedCPPN:
                                                        'pool1', 'pool2',
                                                        'pool3', 'pool4']).style_loss
         # self.loss = MSELayer(self.output, self.target)
+
+        # self.loss = -InceptionV1('InceptionV1Loss', self.output)\
+        #     .avg_channel("mixed4b_3x3_pre_relu", 77)
 
         self.build_summaries()
 

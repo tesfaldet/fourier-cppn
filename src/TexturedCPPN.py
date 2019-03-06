@@ -1,3 +1,4 @@
+import os
 import tensorflow as tf
 import numpy as np
 from src.utils.check_snapshots import check_snapshots
@@ -18,7 +19,7 @@ class TexturedCPPN:
         self.build_graph()
         print('TexturedCPPN Num Variables: ',
               np.sum([np.product([xi.value for xi in x.get_shape()])
-                      for x in tf.all_variables()]))
+                      for x in tf.global_variables()]))
 
     def build_graph(self):
         # Build CPPN
@@ -67,7 +68,7 @@ class TexturedCPPN:
         with tf.Session(config=self.tf_config) as sess:
             resume, iterations_so_far = \
                 check_snapshots(self.my_config['run_id'])
-            writer = tf.summary.FileWriter('logs/' + self.my_config['run_id'],
+            writer = tf.summary.FileWriter(os.path.join(self.my_config["log_dir"], self.my_config['run_id']),
                                            sess.graph)
 
             if resume:
@@ -95,9 +96,8 @@ class TexturedCPPN:
                 if i % self.my_config['snapshot_frequency'] == 0 and \
                    i != iterations_so_far:
                     print('Saving Snapshot...')
-                    saver.save(sess, 'snapshots/' +
-                               self.my_config['run_id'] + '/' +
-                               'snapshot_iter', global_step=i)
+                    saver.save(sess, os.path.join(self.my_config["snapshot_dir"],
+                                                  self.my_config['run_id'], 'snapshot_iter'), global_step=i)
 
     def validate(self):
         pass

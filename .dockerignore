@@ -1,0 +1,6 @@
+**/.git
+**/.DS_Store
+**/data/models
+**/data/out
+**/snapshots
+**/logs

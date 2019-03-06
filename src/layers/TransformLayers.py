@@ -26,8 +26,17 @@ def SpatialTransformerLayer(name, input, transformation=None, inverse=False,
         
         if transformation is None:
             with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
+                # noise = np.array([[1 + np.random.normal(0, 0.05),
+                #                    0 + np.random.normal(0, 0.05),
+                #                    0 + np.random.normal(0, 0.05)],
+                #                   [0 + np.random.normal(0, 0.05),
+                #                    1 + np.random.normal(0, 0.05),
+                #                    0 + np.random.normal(0, 0.05)],
+                #                   [0, 0, 1]],
+                #                  dtype=np.float32)
+                noise = tf.eye(3)
                 transformation = tf.get_variable('transformation_params',
-                                                 initializer=(tf.eye(3) * tf.random_normal([3, 3], 1.0, 0.5)),
+                                                 initializer=noise,
                                                  trainable=trainable)
                 transformation = stop_gradients(transformation,
                                                 np.array([[1, 1, 1],
@@ -40,6 +49,11 @@ def SpatialTransformerLayer(name, input, transformation=None, inverse=False,
         # Apply transformation
         transformed_xyz_coords = tf.matmul(transformation, xyz_coords)  # [3, N]
 
+        # TODO: Apply modulo only on x coordinates
+        transformed_xyz_coords = transformed_xyz_coords % width
+
+        # TODO: Apply module only on y coordinates
+
         warp = tf.reshape(transformed_xyz_coords[:2], [2, height, width])
         warp = tf.transpose(warp, [1, 2, 0])  # [height, width, 2]
         warp = tf.expand_dims(warp, 0)  # [1, height, width, 2]
@@ -51,9 +65,12 @@ def SpatialTransformerLayer(name, input, transformation=None, inverse=False,
 
 def PhotometricTransformLayer(name, input, trainable=True):
     with tf.name_scope(name):
-        init = tf.initializers.ones()
+        init = tf.to_float(np.array([[[[1, 0, 0],
+                                       [0, 1, 0],
+                                       [0, 0, 1]]]]))
         transformed = ConvLayer(name, input, 3,
-                                activation='relu',
+                                activation='tanh',
                                 weight_init=init,
+                                no_shape=True,
                                 trainable=trainable)
         return transformed

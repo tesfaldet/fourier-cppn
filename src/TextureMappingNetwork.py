@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 from src.TextureModule import TextureModule
 from src.utils.load_image import load_image
-from src.layers.ConvLayer import ConvLayer
 
 
 class TextureMappingNetwork:
@@ -16,20 +15,16 @@ class TextureMappingNetwork:
         with tf.name_scope('TextureMappingNetwork'):
             # 224x224 RGB basis textures in range [0, 1]
             basis_1 = tf.image.resize_images(
-                load_image('data/textures/1.1.01.tiff'), [224, 224])
+                load_image('data/textures/pebbles_synth.png'), [224, 224])
             basis_2 = tf.image.resize_images(
-                load_image('data/textures/1.1.07.tiff'), [224, 224])
+                load_image('data/textures/peppers.jpg'), [224, 224])
             basis_3 = tf.image.resize_images(
-                load_image('data/textures/1.1.13.tiff'), [224, 224])
+                load_image('data/textures/1.1.01.tiff'), [224, 224])
 
             # Texture modules collectively forming the basis set
             module_1 = TextureModule('module_1', basis_1)
             module_2 = TextureModule('module_2', basis_2)
             module_3 = TextureModule('module_3', basis_3)
-            self.output = tf.concat([module_1.output,
-                                     module_2.output,
-                                     module_3.output], 3)
-            self.output = ConvLayer('combine', self.output, 3,
-                                    activation=None,
-                                    no_bias=True,
-                                    weight_init=tf.initializers.ones())
+            self.output = tf.add_n([module_1.output,
+                                    module_2.output,
+                                    module_3.output])

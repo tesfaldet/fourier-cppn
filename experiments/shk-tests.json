@@ -4,14 +4,14 @@
         "memory": 8,
         "cpu": 2,
         "gpu": 1,
-        "volumes": ["/mnt/home/thomas/logs/texture-cppn:/logs", "/mnt/home/thomas/snapshots/texture-cppn:/snapshots"]
+        "volumes": ["/mnt/projects/texture-cppn/logs:/logs", "/mnt/projects/texture-cppn/snapshots:/snapshots"]
     },
     "parameters": {
         "name": "GridSearch",
         "config": {
             "dimensions": {
-                "learning_rate": [0.0001, 0.001],
-                "batch_size": [1, 2],
+                "learning_rate": [5e-3, 5e-2],
+                "batch_size": [1],
                 "log_dir": ["/logs"],
                 "snap_dir": ["/snapshots"]
             }

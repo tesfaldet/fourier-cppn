@@ -69,7 +69,7 @@ def PhotometricTransformLayer(name, input, trainable=True):
                                        [0, 1, 0],
                                        [0, 0, 1]]]]))
         transformed = ConvLayer(name, input, 3,
-                                activation=None,
+                                activation='tanh',
                                 weight_init=init,
                                 no_shape=True,
                                 trainable=trainable)

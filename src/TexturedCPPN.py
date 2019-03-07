@@ -29,7 +29,9 @@ class TexturedCPPN:
         self.texture_mapping_network = TextureMappingNetwork()
 
         # Combine output from cppn and texture mapping network
-        self.output = self.cppn.output + self.texture_mapping_network.output
+        self.output = tf.clip_by_value(self.cppn.output +
+                                       self.texture_mapping_network.output,
+                                       0., 1.)
 
         # OBJECTIVE
         self.target = tf.image.resize_images(
@@ -47,9 +49,17 @@ class TexturedCPPN:
 
     def build_summaries(self):
         with tf.name_scope('Summaries'):
-            # Output and Target
-            tf.summary.image('Output', tf.cast(self.output * 255.0, tf.uint8))
+            # Final output and target
+            tf.summary.image('CPPN+Texture', tf.cast(self.output * 255.0,
+                                                     tf.uint8))
             tf.summary.image('Target', tf.cast(self.target * 255.0, tf.uint8))
+
+            # CPPN output and texture mapping network output
+            tf.summary.image('CPPN', tf.cast(self.cppn.output * 255.0,
+                                             tf.uint8))
+            tf.summary.image('Texture',
+                             tf.cast(self.texture_mapping_network.output *
+                                     255.0, tf.uint8))
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)

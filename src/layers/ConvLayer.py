@@ -39,5 +39,7 @@ def ConvLayer(name, input, out_channels, ksize=1, stride=1,
             y = tf.atan(y)
         elif activation == 'sigmoid':
             y = tf.nn.sigmoid(y)
+        elif activation == 'tanh':
+            y = tf.nn.tanh(y)
 
         return y

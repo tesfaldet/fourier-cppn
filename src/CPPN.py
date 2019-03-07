@@ -15,7 +15,7 @@ class CPPN:
         self.build_graph()
         print('CPPN Num Variables: ',
               np.sum([np.product([xi.value for xi in x.get_shape()])
-                      for x in tf.all_variables()]))
+                      for x in tf.global_variables()]))
 
     def build_graph(self):
         # COORDINATE MESHGRID INPUT

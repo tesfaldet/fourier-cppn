@@ -65,9 +65,10 @@ def SpatialTransformerLayer(name, input, transformation=None, inverse=False,
 
 def PhotometricTransformLayer(name, input, trainable=True):
     with tf.name_scope(name):
-        init = tf.to_float(np.array([[[[1, 0, 0],
-                                       [0, 1, 0],
-                                       [0, 0, 1]]]]))
+        init = tf.cast(np.array([[[[1, 0, 0],
+                                   [0, 1, 0],
+                                   [0, 0, 1]]]]),
+                       tf.float32)
         transformed = ConvLayer(name, input, 3,
                                 activation='tanh',
                                 weight_init=init,

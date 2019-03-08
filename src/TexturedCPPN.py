@@ -38,10 +38,11 @@ class TexturedCPPN:
                                    'textures', 'pebbles.jpg')
         self.target = tf.image.resize_images(
             load_image(target_path), [224, 224])
-        self.loss = 1e5 * PerceptualLoss(self.output, self.target,
-                                         style_layers=['conv1_1/Relu',
-                                                       'pool1', 'pool2',
-                                                       'pool3', 'pool4']).style_loss
+        self.loss = 1e5 * \
+            PerceptualLoss(self.my_config, self.output,
+                           self.target,
+                           style_layers=['conv1_1/Relu','pool1', 'pool2',
+                                         'pool3', 'pool4']).style_loss
         # self.loss = MSELayer(self.output, self.target)
 
         # self.loss = -InceptionV1('InceptionV1Loss', self.output)\

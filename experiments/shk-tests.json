@@ -4,7 +4,7 @@
         "memory": 8,
         "cpu": 2,
         "gpu": 1,
-        "volumes": ["/mnt/projects/texture-cppn/logs:/logs", "/mnt/projects/texture-cppn/snapshots:/snapshots"]
+        "volumes": ["/mnt/projects/texture-cppn/logs:/logs", "/mnt/projects/texture-cppn/snapshots:/snapshots", "/mnt/datasets/public/texture-cppn/data:/data"]
     },
     "parameters": {
         "name": "GridSearch",
@@ -13,7 +13,8 @@
                 "learning_rate": [5e-3, 5e-2, 5e-1],
                 "batch_size": [1],
                 "log_dir": ["/logs"],
-                "snap_dir": ["/snapshots"]
+                "snap_dir": ["/snapshots"],
+                "data_dir": ["/data"]
             }
         }
     }

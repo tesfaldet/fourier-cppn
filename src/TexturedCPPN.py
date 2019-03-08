@@ -26,7 +26,7 @@ class TexturedCPPN:
         self.cppn = CPPN(tf_config=self.tf_config, my_config=self.my_config)
 
         # Build TextureMappingNetwork
-        self.texture_mapping_network = TextureMappingNetwork()
+        self.texture_mapping_network = TextureMappingNetwork(self.my_config)
 
         # Combine output from cppn and texture mapping network
         self.output = tf.clip_by_value(self.cppn.output +
@@ -34,8 +34,10 @@ class TexturedCPPN:
                                        0., 1.)
 
         # OBJECTIVE
+        target_path = os.path.join(self.my_config['data_dir'],
+                                   'textures', 'pebbles.jpg')
         self.target = tf.image.resize_images(
-            load_image('data/textures/pebbles.jpg'), [224, 224])
+            load_image(target_path), [224, 224])
         self.loss = 1e5 * PerceptualLoss(self.output, self.target,
                                          style_layers=['conv1_1/Relu',
                                                        'pool1', 'pool2',
@@ -78,8 +80,9 @@ class TexturedCPPN:
         with tf.Session(config=self.tf_config) as sess:
             resume, iterations_so_far = \
                 check_snapshots(self.my_config['run_id'])
-            writer = tf.summary.FileWriter(os.path.join(self.my_config["log_dir"], self.my_config['run_id']),
-                                           sess.graph)
+            writer = tf.summary.FileWriter(
+                os.path.join(self.my_config["log_dir"],
+                             self.my_config['run_id']), sess.graph)
 
             if resume:
                 saver.restore(sess, resume)
@@ -106,8 +109,10 @@ class TexturedCPPN:
                 if i % self.my_config['snapshot_frequency'] == 0 and \
                    i != iterations_so_far:
                     print('Saving Snapshot...')
-                    saver.save(sess, os.path.join(self.my_config["snapshot_dir"],
-                                                  self.my_config['run_id'], 'snapshot_iter'), global_step=i)
+                    saver.save(sess,
+                               os.path.join(self.my_config['snapshot_dir'],
+                                            self.my_config['run_id'],
+                                            'snapshot_iter'), global_step=i)
 
     def validate(self):
         pass

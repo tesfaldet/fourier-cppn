@@ -8,10 +8,11 @@ from src.utils.vgg import vgg_process
 class PerceptualLoss(object):
 
     # predicted and target are RGB [0, 1]
-    def __init__(self, predicted, target,
+    def __init__(self, my_config, predicted, target,
                  style_layers=['conv1_1/Relu', 'pool1', 'pool2',
                                'pool3', 'pool4'],
                  content_layers=['conv1_1/Relu']):
+        self.my_config = my_config
         self.predicted = predicted
         self.target = target
         self.style_layers = style_layers
@@ -24,9 +25,11 @@ class PerceptualLoss(object):
     def build_graph(self):
         with tf.name_scope('PerceptualLoss'):
             # VGG accepts BGR [0-mean, 255-mean] mean subtracted
-            vgg19_predicted = VGG19('VGG19_predicted', 'PerceptualLoss',
+            vgg19_predicted = VGG19(self.my_config, 'VGG19_predicted',
+                                    'PerceptualLoss',
                                     vgg_process(self.predicted))
-            vgg19_target = VGG19('VGG19_target', 'PerceptualLoss',
+            vgg19_target = VGG19(self.my_config, 'VGG19_target',
+                                 'PerceptualLoss',
                                  vgg_process(self.target))
 
             self.style_loss = self._style_loss(vgg19_predicted,

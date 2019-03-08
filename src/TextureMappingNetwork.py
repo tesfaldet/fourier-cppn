@@ -1,3 +1,4 @@
+import os
 import tensorflow as tf
 import numpy as np
 from src.TextureModule import TextureModule
@@ -5,7 +6,8 @@ from src.utils.load_image import load_image
 
 
 class TextureMappingNetwork:
-    def __init__(self):
+    def __init__(self, my_config):
+        self.my_config = my_config
         self.build_graph()
         print('TextureMappingNetwork Num Variables: ',
               np.sum([np.product([xi.value for xi in x.get_shape()])
@@ -14,12 +16,18 @@ class TextureMappingNetwork:
     def build_graph(self):
         with tf.name_scope('TextureMappingNetwork'):
             # 224x224 RGB basis textures in range [0, 1]
+            basis_1_path = os.path.join(self.my_config['data_dir'],
+                                        'textures', 'pebbles_synth.png')
+            basis_2_path = os.path.join(self.my_config['data_dir'],
+                                        'textures', '1.1.02.tiff')
+            basis_3_path = os.path.join(self.my_config['data_dir'],
+                                        'textures', '1.1.01.tiff')
             basis_1 = tf.image.resize_images(
-                load_image('data/textures/pebbles_synth.png'), [224, 224])
+                load_image(basis_1_path), [224, 224])
             basis_2 = tf.image.resize_images(
-                load_image('data/textures/1.1.02.tiff'), [224, 224])
+                load_image(basis_2_path), [224, 224])
             basis_3 = tf.image.resize_images(
-                load_image('data/textures/1.1.01.tiff'), [224, 224])
+                load_image(basis_3_path), [224, 224])
 
             # Texture modules collectively forming the basis set
             module_1 = TextureModule('module_1', basis_1)

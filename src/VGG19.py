@@ -1,14 +1,18 @@
+import os
 from src.layers.GramLayer import GramLayer
 import tensorflow as tf
 
 
 class VGG19(object):
 
-    def __init__(self, name, prefix, input):
+    def __init__(self, my_config, name, prefix, input):
+        self.my_config = my_config
         self.name = name
         self.full_name = prefix + '/' + self.name
 
-        with open('data/models/vgg19_normalized.tfmodel', mode='rb') as f:
+        vgg_path = os.path.join(self.my_config['data_dir'], 'models',
+                                'vgg19_normalized.tfmodel')
+        with open(vgg_path, mode='rb') as f:
             file_content = f.read()
 
         graph_def = tf.GraphDef()

@@ -29,9 +29,7 @@ class TexturedCPPN:
         self.texture_mapping_network = TextureMappingNetwork(self.my_config)
 
         # Combine output from cppn and texture mapping network
-        self.output = tf.clip_by_value(self.cppn.output +
-                                       self.texture_mapping_network.output,
-                                       0., 1.)
+        self.output = self.cppn.output
 
         # OBJECTIVE
         target_path = os.path.join(self.my_config['data_dir'],
@@ -41,7 +39,7 @@ class TexturedCPPN:
         self.loss = 1e5 * \
             PerceptualLoss(self.my_config, self.output,
                            self.target,
-                           style_layers=['conv1_1/Relu','pool1', 'pool2',
+                           style_layers=['conv1_1/Relu', 'pool1', 'pool2',
                                          'pool3', 'pool4']).style_loss
         # self.loss = MSELayer(self.output, self.target)
 
@@ -53,16 +51,16 @@ class TexturedCPPN:
     def build_summaries(self):
         with tf.name_scope('Summaries'):
             # Final output and target
-            tf.summary.image('CPPN+Texture', tf.cast(self.output * 255.0,
-                                                     tf.uint8))
+            # tf.summary.image('CPPN+Texture', tf.cast(self.output * 255.0,
+                                                    #  tf.uint8))
             tf.summary.image('Target', tf.cast(self.target * 255.0, tf.uint8))
 
             # CPPN output and texture mapping network output
             tf.summary.image('CPPN', tf.cast(self.cppn.output * 255.0,
                                              tf.uint8))
-            tf.summary.image('Texture',
-                             tf.cast(self.texture_mapping_network.output *
-                                     255.0, tf.uint8))
+            # tf.summary.image('Texture',
+                            #  tf.cast(((self.texture_mapping_network.output + 1.) / 2.) *
+                                    #  255.0, tf.uint8))
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)

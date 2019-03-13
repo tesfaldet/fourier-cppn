@@ -24,8 +24,8 @@ def ConvLayer(name, input, out_channels, ksize=1, stride=1,
             y = tf.nn.conv2d(input, w, strides=[1, stride, stride, 1],
                              padding='SAME')
         else:
-            b = tf.get_variable('bias', initializer=tf.constant(0.0,
-                                shape=[out_channels], dtype=tf.float32),
+            b = tf.get_variable('bias', initializer=tf.random_uniform_initializer(-1.0, 1.0),
+                                shape=[out_channels], dtype=tf.float32,
                                 trainable=trainable)
             y = tf.nn.conv2d(input, w, strides=[1, stride, stride, 1],
                              padding='SAME') + b

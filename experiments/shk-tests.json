@@ -10,7 +10,7 @@
         "name": "GridSearch",
         "config": {
             "dimensions": {
-                "learning_rate": [5e-5, 5e-4],
+                "learning_rate": [5e-4],
                 "batch_size": [1],
                 "log_dir": ["/logs"],
                 "snap_dir": ["/snapshots"],

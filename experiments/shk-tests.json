@@ -1,5 +1,5 @@
 {
-    "title": "Tests",
+    "title": "texture-cppn",
     "worker_config": {
         "memory": 8,
         "cpu": 2,
@@ -12,9 +12,15 @@
             "dimensions": {
                 "learning_rate": [5e-4],
                 "batch_size": [1],
+                "dimensions": ["224,224"],
                 "log_dir": ["/logs"],
                 "snap_dir": ["/snapshots"],
-                "data_dir": ["/data"]
+                "data_dir": ["/data"],
+                "cppn_coordinate_limit": ["3.0**0.5"],
+                "cppn_num_layers": [8],
+                "cppn_num_neurons": [24],
+                "cppn_activation": ["atan_concat"],
+                "style_layers": ["conv1_1/Relu,pool1,pool2,pool3,pool4"]
             }
         }
     }

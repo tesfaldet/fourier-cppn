@@ -26,7 +26,8 @@ class TexturedCPPN:
         self.cppn = CPPN(tf_config=self.tf_config, my_config=self.my_config)
 
         # Build TextureMappingNetwork
-        self.texture_mapping_network = TextureMappingNetwork(self.my_config)
+        self.texture_mapping_network = \
+            TextureMappingNetwork(my_config=self.my_config)
 
         # Combine output from cppn and texture mapping network
         self.output = self.cppn.output
@@ -34,13 +35,17 @@ class TexturedCPPN:
         # OBJECTIVE
         target_path = os.path.join(self.my_config['data_dir'],
                                    'textures', 'pebbles.jpg')
+        # TODO: clean this up
+        dimensions = self.my_config['dimensions'].split(',')
+        width = int(dimensions[0])
+        height = int(dimensions[1])
         self.target = tf.image.resize_images(
-            load_image(target_path), [224, 224])
+            load_image(target_path), [width, height])
         self.loss = 1e5 * \
             PerceptualLoss(self.my_config, self.output,
                            self.target,
-                           style_layers=['conv1_1/Relu', 'pool1', 'pool2',
-                                         'pool3', 'pool4']).style_loss
+                           style_layers=self.my_config['style_layers']
+                                            .split(',')).style_loss
         # self.loss = MSELayer(self.output, self.target)
 
         # self.loss = -InceptionV1('InceptionV1Loss', self.output)\

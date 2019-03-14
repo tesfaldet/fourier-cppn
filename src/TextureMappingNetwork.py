@@ -42,32 +42,36 @@ class TextureMappingNetwork:
                                          'textures', '1.1.12.tiff')
             basis_13_path = os.path.join(self.my_config['data_dir'],
                                          'textures', '1.1.13.tiff')
+            # TODO: clean this up
+            dimensions = self.my_config['dimensions'].split(',')
+            width = int(dimensions[0])
+            height = int(dimensions[1])
             basis_1 = tf.image.resize_images(
-                load_image(basis_1_path), [224, 224])
+                load_image(basis_1_path), [width, height])
             basis_2 = tf.image.resize_images(
-                load_image(basis_2_path), [224, 224])
+                load_image(basis_2_path), [width, height])
             basis_3 = tf.image.resize_images(
-                load_image(basis_3_path), [224, 224])
+                load_image(basis_3_path), [width, height])
             basis_4 = tf.image.resize_images(
-                load_image(basis_4_path), [224, 224])
+                load_image(basis_4_path), [width, height])
             basis_5 = tf.image.resize_images(
-                load_image(basis_5_path), [224, 224])
+                load_image(basis_5_path), [width, height])
             basis_6 = tf.image.resize_images(
-                load_image(basis_6_path), [224, 224])
+                load_image(basis_6_path), [width, height])
             basis_7 = tf.image.resize_images(
-                load_image(basis_7_path), [224, 224])
+                load_image(basis_7_path), [width, height])
             basis_8 = tf.image.resize_images(
-                load_image(basis_8_path), [224, 224])
+                load_image(basis_8_path), [width, height])
             basis_9 = tf.image.resize_images(
-                load_image(basis_9_path), [224, 224])
+                load_image(basis_9_path), [width, height])
             basis_10 = tf.image.resize_images(
-                load_image(basis_10_path), [224, 224])
+                load_image(basis_10_path), [width, height])
             basis_11 = tf.image.resize_images(
-                load_image(basis_11_path), [224, 224])
+                load_image(basis_11_path), [width, height])
             basis_12 = tf.image.resize_images(
-                load_image(basis_12_path), [224, 224])
+                load_image(basis_12_path), [width, height])
             basis_13 = tf.image.resize_images(
-                load_image(basis_13_path), [224, 224])
+                load_image(basis_13_path), [width, height])
 
             # Texture modules collectively forming the basis set
             module_1 = TextureModule('module_1', basis_1)

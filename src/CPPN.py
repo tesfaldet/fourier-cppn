@@ -20,33 +20,32 @@ class CPPN:
     def build_graph(self):
         # COORDINATE MESHGRID INPUT
         with tf.name_scope('Meshgrid'):
-            self.width = 224
-            self.height = 224
-            r = 3.0**0.5  # std(coord_range) == 1.0
+            # TODO: clean this up
+            dimensions = self.my_config['dimensions'].split(',')
+            self.width = int(dimensions[0])
+            self.height = int(dimensions[1])
+            r = eval(self.my_config['cppn_coordinate_limit'])  # sketchy af
             self.input = create_meshgrid(self.width, self.height, -r, r, -r, r)
 
         # CPPN OUTPUT
         with tf.name_scope('CPPN'):
-            init = \
-                tf.initializers.random_normal(0, tf.sqrt(1.0/24.0))
-            self.fc1 = ConvLayer('fc1', self.input, 24,
-                                 weight_init=init, activation='atan_concat')
-            self.fc2 = ConvLayer('fc2', self.fc1, 24,
-                                 weight_init=init, activation='atan_concat')
-            self.fc3 = ConvLayer('fc3', self.fc2, 24,
-                                 weight_init=init, activation='atan_concat')
-            self.fc4 = ConvLayer('fc4', self.fc3, 24,
-                                 weight_init=init, activation='atan_concat')
-            self.fc5 = ConvLayer('fc5', self.fc4, 24,
-                                 weight_init=init, activation='atan_concat')
-            self.fc6 = ConvLayer('fc6', self.fc5, 24,
-                                 weight_init=init, activation='atan_concat')
-            self.fc7 = ConvLayer('fc7', self.fc6, 24,
-                                 weight_init=init, activation='atan_concat')
-            self.fc8 = ConvLayer('fc8', self.fc7, 24,
-                                 weight_init=init, activation='atan_concat')
-            self.output = ConvLayer('output', self.fc8, 3,
-                                    activation='sigmoid')
+            self.cppn_layers = [('input', self.input)]
+            for i in range(self.my_config['cppn_num_layers']):
+                prev_layer = self.cppn_layers[i][1]
+                prev_num_channels = tf.shape(prev_layer)[-1]
+                layer_name = 'fc' + str(i + 1)
+                init = \
+                    tf.initializers \
+                      .random_normal(0, tf.sqrt(1.0 / prev_num_channels))
+                layer = \
+                    ConvLayer(layer_name, prev_layer,
+                              out_channels=self.my_config['cppn_num_neurons'],
+                              weight_init=init,
+                              activation=self.my_config['cppn_activation'])
+                self.cppn_layers.append((layer_name, layer))
+            self.output = ConvLayer('output', self.cppn_layers[-1][1], 3,
+                                    activation='sigmoid',
+                                    weight_init=tf.zeros_initializer())
 
         # OBJECTIVE
         # self.loss = -InceptionV1('InceptionV1Loss', self.output)\

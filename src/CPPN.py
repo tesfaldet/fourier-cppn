@@ -32,7 +32,8 @@ class CPPN:
             self.cppn_layers = [('input', self.input)]
             for i in range(self.my_config['cppn_num_layers']):
                 prev_layer = self.cppn_layers[i][1]
-                prev_num_channels = tf.shape(prev_layer)[-1]
+                prev_num_channels = tf.cast(tf.shape(prev_layer)[-1],
+                                            tf.float32)
                 layer_name = 'fc' + str(i + 1)
                 init = \
                     tf.initializers \

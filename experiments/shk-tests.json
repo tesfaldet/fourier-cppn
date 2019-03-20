@@ -16,7 +16,7 @@
                 "log_dir": ["/logs"],
                 "snap_dir": ["/snapshots"],
                 "data_dir": ["/data"],
-                "cppn_coordinate_limit": ["0.5**0.5", "0.4**0.5", "0.3**0.5", "0.2**0.5", "0.1**0.5"],
+                "cppn_coordinate_limit": ["3**0.5"],
                 "cppn_num_layers": [8],
                 "cppn_num_neurons": [24],
                 "cppn_activation": ["atan_concat"],

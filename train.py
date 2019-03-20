@@ -44,8 +44,7 @@ trial_id = os.environ.get('SHK_TRIAL_ID')
 my_config['run_id'] = str(trial_id)
 
 # NOTE KEEPING
-notes_path = os.path.join(my_config['log_dir'], str(trial_id),
-                          str(trial_id) + '.txt')
+notes_path = os.path.join(my_config['log_dir'], str(trial_id) + '.txt')
 with open(notes_path, 'w') as fp:
     notes = \
         '\n'.join('{!s}={!r}'.format(key, val) for (key, val)

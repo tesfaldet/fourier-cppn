@@ -2,7 +2,7 @@ import os
 import time
 import argparse
 import tensorflow as tf
-from src.TexturedCPPN import TexturedCPPN
+from src.CPPN import CPPN
 
 # SHURIKEN IMPORTS
 from shuriken.utils import get_hparams
@@ -58,7 +58,7 @@ tf_config.gpu_options.allow_growth = True
 tf_config.allow_soft_placement = True
 
 # BUILD GRAPH
-m = TexturedCPPN(tf_config=tf_config, my_config=my_config)
+m = CPPN(tf_config=tf_config, my_config=my_config)
 
 # TRAIN
 m.train()

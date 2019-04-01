@@ -5,9 +5,7 @@ from src.utils.check_snapshots import check_snapshots
 from src.CPPN import CPPN
 from src.TextureMappingNetwork import TextureMappingNetwork
 from src.PerceptualLoss import PerceptualLoss
-from src.layers.MSELayer import MSELayer
 from src.utils.load_image import load_image
-from src.InceptionV1 import InceptionV1
 
 
 class TexturedCPPN:

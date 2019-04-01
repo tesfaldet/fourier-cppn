@@ -4,11 +4,11 @@ import numpy as np
 
 def IDFTLayer(name, input_meshgrid, fourier_meshgrid, coefficients):
     with tf.name_scope(name):
-        input_shape = tf.shape(input_meshgrid)
+        input_shape = input_meshgrid.get_shape().as_list()
         input_width = input_shape[2]
         input_height = input_shape[1]
 
-        fourier_shape = tf.shape(fourier_meshgrid)
+        fourier_shape = fourier_meshgrid.get_shape().as_list()
         fourier_width = fourier_shape[2]
         fourier_height = fourier_shape[1]
 
@@ -47,6 +47,7 @@ def IDFTLayer(name, input_meshgrid, fourier_meshgrid, coefficients):
 
         # Normalize and take real part
         output = \
-            tf.real(output) / tf.sqrt(fourier_width * fourier_height)
+            tf.real(output) / tf.sqrt(tf.cast(fourier_width *
+                                              fourier_height, tf.float32))
 
         return output

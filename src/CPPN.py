@@ -22,27 +22,39 @@ class CPPN:
 
     def build_graph(self):
         # COORDINATE MESHGRID INPUT
-        with tf.name_scope('Meshgrid'):
+        with tf.name_scope('Input_Meshgrid'):
             # TODO: clean this up
-            dimensions = self.my_config['dimensions'].split(',')
-            self.width = int(dimensions[0])
-            self.height = int(dimensions[1])
-            r = eval(self.my_config['cppn_coordinate_limit'])  # sketchy af
-            self.input = create_meshgrid(self.width, self.height, -r, r, -r, r)
+            self.input_dimensions = \
+                self.my_config['input_dimensions'].split(',')
+            self.input_width = int(self.input_dimensions[0])
+            self.input_height = int(self.input_dimensions[1])
+            self.input_coord_range = \
+                self.my_config['cppn_input_coordinate_limit'].split(',')
+            self.input_coord_min = eval(self.input_coord_range[0])
+            self.input_coord_max = eval(self.input_coord_range[1])
+            self.input_meshgrid = \
+                create_meshgrid(self.input_width, self.input_height,
+                                self.input_coord_min, self.input_coord_max,
+                                self.input_coord_min, self.input_coord_max)
 
         with tf.name_scope('Fourier_Meshgrid'):
-            f_dimensions = self.my_config['cppn_fourier_dimensions'].split(',')
-            self.f_width = int(f_dimensions[0])
-            self.f_height = int(f_dimensions[1])
+            self.f_dimensions = \
+                self.my_config['cppn_fourier_dimensions'].split(',')
+            self.f_width = int(self.f_dimensions[0])
+            self.f_height = int(self.f_dimensions[1])
+            self.fourier_coord_range = \
+                self.my_config['cppn_fourier_coordinate_limit'].split(',')
+            self.fourier_coord_min = eval(self.fourier_coord_range[0])
+            self.fourier_coord_max = eval(self.fourier_coord_range[1])
             self.fourier_basis_size = self.f_width * self.f_height
-            self.fourier_meshgrid = create_meshgrid(self.f_width,
-                                                    self.f_height,
-                                                    0, self.f_width - 1,
-                                                    0, self.f_height - 1)
+            self.fourier_meshgrid = \
+                create_meshgrid(self.f_width, self.f_height,
+                                self.fourier_coord_min, self.fourier_coord_max,
+                                self.fourier_coord_min, self.fourier_coord_max)
 
         # CPPN OUTPUT
         with tf.name_scope('CPPN'):
-            self.cppn_layers = [('input', self.input)]
+            self.cppn_layers = [('input', self.input_meshgrid)]
             for i in range(self.my_config['cppn_num_layers']):
                 prev_layer = self.cppn_layers[i][1]
                 prev_num_channels = tf.cast(tf.shape(prev_layer)[-1],
@@ -63,8 +75,7 @@ class CPPN:
             # 1 x H x W x (H_f x W_f x 2)
             self.coeffs = ConvLayer('coefficients', self.cppn_layers[-1][1],
                                     self.fourier_basis_size * 2 * 3,
-                                    activation=None,
-                                    weight_init=tf.zeros_initializer())
+                                    activation=None)
             
             # Make fourier coefficients complex 1 x H x W x (H_f x W_f)
             self.coeffs_r = tf.dtypes.complex(
@@ -88,11 +99,11 @@ class CPPN:
                              self.fourier_basis_size*6])
         
         # Each output is 1 x H x W x 1
-        self.output_r = IDFTLayer('output_r', self.input,
+        self.output_r = IDFTLayer('output_r', self.input_meshgrid,
                                   self.fourier_meshgrid, self.coeffs_r)
-        self.output_g = IDFTLayer('output_g', self.input,
+        self.output_g = IDFTLayer('output_g', self.input_meshgrid,
                                   self.fourier_meshgrid, self.coeffs_g)
-        self.output_b = IDFTLayer('output_b', self.input,
+        self.output_b = IDFTLayer('output_b', self.input_meshgrid,
                                   self.fourier_meshgrid, self.coeffs_b)
 
         # Construct RGB output 1 x H x W x 3
@@ -105,12 +116,8 @@ class CPPN:
         # OBJECTIVE
         target_path = os.path.join(self.my_config['data_dir'],
                                    'textures', 'pebbles.jpg')
-        # TODO: clean this up
-        dimensions = self.my_config['dimensions'].split(',')
-        width = int(dimensions[0])
-        height = int(dimensions[1])
         self.target = tf.image.resize_images(
-            load_image(target_path), [width, height])
+            load_image(target_path), [self.input_width, self.input_height])
         self.loss = 1e5 * \
             PerceptualLoss(self.my_config, self.output,
                            self.target,
@@ -126,6 +133,14 @@ class CPPN:
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)
+
+            # coeffs = (tf.real(self.coeffs_r) +
+            #           tf.real(self.coeffs_g) +
+            #           tf.real(self.coeffs_b)) / 3.0
+
+            # tf.summary.image('DC', tf.cast(tf.sigmoid(coeffs[..., 0:1])*255.0, tf.uint8))
+            # tf.summary.image('horiz', tf.cast(tf.sigmoid(coeffs[..., 5:6])*255.0, tf.uint8))
+            # tf.summary.image('vert', tf.cast(tf.sigmoid(coeffs[..., 20:21])*255.0, tf.uint8))
 
             # Merge all summaries
             self.summaries = tf.summary.merge_all()

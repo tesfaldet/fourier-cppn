@@ -98,17 +98,18 @@ class CPPN:
                              self.fourier_basis_size*5:
                              self.fourier_basis_size*6])
         
-        # Change scaling of fourier meshgrid to match scaling of input meshgrid
-        scale_factor = (self.input_width - 1.0) / \
-            (self.input_coord_max - self.input_coord_min)
-        self.fourier_meshgrid = self.fourier_meshgrid / scale_factor
+        # Input meshgrid in pixel scale
+        self.input_meshgrid_rescaled = \
+            create_meshgrid(self.input_width, self.input_height,
+                            0, self.input_width - 1,
+                            0, self.input_height - 1)
 
         # Each output is 1 x H x W x 1
-        self.output_r = IDFTLayer('output_r', self.input_meshgrid,
+        self.output_r = IDFTLayer('output_r', self.input_meshgrid_rescaled,
                                   self.fourier_meshgrid, self.coeffs_r)
-        self.output_g = IDFTLayer('output_g', self.input_meshgrid,
+        self.output_g = IDFTLayer('output_g', self.input_meshgrid_rescaled,
                                   self.fourier_meshgrid, self.coeffs_g)
-        self.output_b = IDFTLayer('output_b', self.input_meshgrid,
+        self.output_b = IDFTLayer('output_b', self.input_meshgrid_rescaled,
                                   self.fourier_meshgrid, self.coeffs_b)
 
         # Construct RGB output 1 x H x W x 3

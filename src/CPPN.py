@@ -29,7 +29,7 @@ class CPPN:
             self.input_width = int(self.input_dimensions[0])
             self.input_height = int(self.input_dimensions[1])
             self.input_coord_range = \
-                self.my_config['cppn_input_coordinate_limit'].split(',')
+                self.my_config['cppn_input_coordinate_range'].split(',')
             self.input_coord_min = eval(self.input_coord_range[0])
             self.input_coord_max = eval(self.input_coord_range[1])
             self.input_meshgrid = \
@@ -43,7 +43,7 @@ class CPPN:
             self.f_width = int(self.f_dimensions[0])
             self.f_height = int(self.f_dimensions[1])
             self.fourier_coord_range = \
-                self.my_config['cppn_fourier_coordinate_limit'].split(',')
+                self.my_config['cppn_fourier_coordinate_range'].split(',')
             self.fourier_coord_min = eval(self.fourier_coord_range[0])
             self.fourier_coord_max = eval(self.fourier_coord_range[1])
             self.fourier_basis_size = self.f_width * self.f_height
@@ -98,6 +98,11 @@ class CPPN:
                              self.fourier_basis_size*5:
                              self.fourier_basis_size*6])
         
+        # Change scaling of fourier meshgrid to match scaling of input meshgrid
+        scale_factor = (self.input_width - 1.0) / \
+            (self.input_coord_max - self.input_coord_min)
+        self.fourier_meshgrid = self.fourier_meshgrid / scale_factor
+
         # Each output is 1 x H x W x 1
         self.output_r = IDFTLayer('output_r', self.input_meshgrid,
                                   self.fourier_meshgrid, self.coeffs_r)

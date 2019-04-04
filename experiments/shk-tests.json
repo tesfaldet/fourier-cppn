@@ -16,13 +16,13 @@
                 "log_dir": ["/logs"],
                 "snap_dir": ["/snapshots"],
                 "data_dir": ["/data"],
-                "cppn_input_coordinate_limit": ["-3**0.5,3**0.5"],
+                "cppn_input_coordinate_range": ["-3**0.5,3**0.5"],
                 "cppn_num_layers": [8],
                 "cppn_num_neurons": [24],
                 "cppn_activation": ["atan_concat"],
                 "style_layers": ["conv1_1/Relu,pool1,pool2,pool3,pool4"],
                 "cppn_fourier_dimensions": ["10,10"],
-                "cppn_fourier_coordinate_limit": ["0,9"]
+                "cppn_fourier_coordinate_range": ["0,9"]
             }
         }
     }

@@ -122,8 +122,11 @@ class CPPN:
         # OBJECTIVE
         target_path = os.path.join(self.my_config['data_dir'],
                                    'textures', 'pebbles.jpg')
+        self.target_dimensions = self.my_config['target_dimensions'].split(',')
+        self.target_width = int(self.target_dimensions[0])
+        self.target_height = int(self.target_dimensions[1])
         self.target = tf.image.resize_images(
-            load_image(target_path), [self.input_width, self.input_height])
+            load_image(target_path), [self.target_width, self.target_height])
         self.loss = 1e5 * \
             PerceptualLoss(self.my_config, self.output,
                            self.target,
@@ -139,14 +142,6 @@ class CPPN:
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)
-
-            # coeffs = (tf.real(self.coeffs_r) +
-            #           tf.real(self.coeffs_g) +
-            #           tf.real(self.coeffs_b)) / 3.0
-
-            # tf.summary.image('DC', tf.cast(tf.sigmoid(coeffs[..., 0:1])*255.0, tf.uint8))
-            # tf.summary.image('horiz', tf.cast(tf.sigmoid(coeffs[..., 5:6])*255.0, tf.uint8))
-            # tf.summary.image('vert', tf.cast(tf.sigmoid(coeffs[..., 20:21])*255.0, tf.uint8))
 
             # Merge all summaries
             self.summaries = tf.summary.merge_all()

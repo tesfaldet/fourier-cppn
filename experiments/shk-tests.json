@@ -12,7 +12,8 @@
             "dimensions": {
                 "learning_rate": [5e-4],
                 "batch_size": [1],
-                "input_dimensions": ["224,224"],
+                "input_dimensions": ["448,448"],
+                "target_dimensions": ["224,224"],
                 "log_dir": ["/logs"],
                 "snap_dir": ["/snapshots"],
                 "data_dir": ["/data"],

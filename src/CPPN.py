@@ -63,14 +63,10 @@ class CPPN:
                 weight_init = \
                     tf.initializers \
                       .random_normal(0, tf.sqrt(1.0 / prev_num_channels))
-                if i == 0:
-                    bias_init = \
-                        tf.initializers \
-                        .random_uniform(self.input_coord_min,
-                                        self.input_coord_max)
-                else:
-                    bias_init = \
-                        tf.initializers.zeros()
+                bias_init = \
+                    tf.initializers \
+                      .random_uniform(self.input_coord_min,
+                                      self.input_coord_max)
                 layer = \
                     ConvLayer(layer_name, prev_layer,
                               out_channels=self.my_config['cppn_num_neurons'],
@@ -78,14 +74,14 @@ class CPPN:
                               bias_init=bias_init,
                               activation=self.my_config['cppn_activation'])
                 self.cppn_layers.append((layer_name, layer))
-            
+
             # Outputting amplitudes aka Fourier mixin coefficients for a
             # basis set of exponentials aka sinusoids at different frequencies
             # 1 x H x W x (H_f x W_f x 2)
             self.coeffs = ConvLayer('coefficients', self.cppn_layers[-1][1],
                                     self.fourier_basis_size * 2 * 3,
                                     activation=None)
-            
+
             # Make fourier coefficients complex 1 x H x W x (H_f x W_f)
             self.coeffs_r = tf.dtypes.complex(
                  self.coeffs[..., :self.fourier_basis_size*1],
@@ -106,7 +102,7 @@ class CPPN:
                  self.coeffs[...,
                              self.fourier_basis_size*5:
                              self.fourier_basis_size*6])
-        
+
         # Input meshgrid in pixel scale
         self.input_meshgrid_rescaled = \
             create_meshgrid(self.input_width, self.input_height,

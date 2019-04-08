@@ -4,8 +4,8 @@ import tensorflow as tf
 def ConvLayer(name, input, out_channels, ksize=1, stride=1,
               activation='relu',
               weight_init=tf.initializers.zeros(),
+              bias_init=tf.initialzers.zeros(),
               trainable=True,
-              no_bias=False,
               no_shape=False):
     in_channels = input.get_shape().as_list()[3]
     shape = [ksize, ksize, in_channels, out_channels]
@@ -20,12 +20,12 @@ def ConvLayer(name, input, out_channels, ksize=1, stride=1,
                                 initializer=weight_init,
                                 shape=shape,
                                 trainable=trainable)
-        if no_bias:
+        if bias_init is None:
             y = tf.nn.conv2d(input, w, strides=[1, stride, stride, 1],
                              padding='SAME')
         else:
             b = tf.get_variable('bias',
-                                initializer=tf.zeros_initializer(),
+                                initializer=bias_init,
                                 shape=[out_channels], dtype=tf.float32,
                                 trainable=trainable)
             y = tf.nn.conv2d(input, w, strides=[1, stride, stride, 1],

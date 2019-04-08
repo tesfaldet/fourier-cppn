@@ -60,13 +60,22 @@ class CPPN:
                 prev_num_channels = tf.cast(tf.shape(prev_layer)[-1],
                                             tf.float32)
                 layer_name = 'fc' + str(i + 1)
-                init = \
+                weight_init = \
                     tf.initializers \
                       .random_normal(0, tf.sqrt(1.0 / prev_num_channels))
+                if i == 0:
+                    bias_init = \
+                        tf.initializers \
+                        .random_uniform(self.input_coord_min,
+                                        self.input_coord_max)
+                else:
+                    bias_init = \
+                        tf.initializers.zeros()
                 layer = \
                     ConvLayer(layer_name, prev_layer,
                               out_channels=self.my_config['cppn_num_neurons'],
-                              weight_init=init,
+                              weight_init=weight_init,
+                              bias_init=bias_init,
                               activation=self.my_config['cppn_activation'])
                 self.cppn_layers.append((layer_name, layer))
             

@@ -4,7 +4,7 @@ import tensorflow as tf
 def ConvLayer(name, input, out_channels, ksize=1, stride=1,
               activation='relu',
               weight_init=tf.initializers.zeros(),
-              bias_init=tf.initialzers.zeros(),
+              bias_init=tf.initializers.zeros(),
               trainable=True,
               no_shape=False):
     in_channels = input.get_shape().as_list()[3]

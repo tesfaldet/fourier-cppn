@@ -14,6 +14,7 @@
                 "batch_size": [1],
                 "input_dimensions": ["224,224"],
                 "target_dimensions": ["224,224"],
+                "target_image_name": ["peppers.jpg"],
                 "log_dir": ["/logs"],
                 "snap_dir": ["/snapshots"],
                 "data_dir": ["/data"],

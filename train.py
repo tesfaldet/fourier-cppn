@@ -2,7 +2,8 @@ import os
 import time
 import argparse
 import tensorflow as tf
-from src.CPPN import CPPN
+from src.FourierCPPN import FourierCPPN
+from src.RGBCPPN import RGBCPPN
 
 # SHURIKEN IMPORTS
 from shuriken.utils import get_hparams
@@ -19,8 +20,8 @@ parser.add_argument('-printf', '--print_frequency', default=10, type=int)
 parser.add_argument('-snapf', '--snapshot_frequency', default=110000, type=int)
 parser.add_argument('-log_dir', '--log_dir', default="logs", type=str)
 parser.add_argument('-snap_dir', '--snapshot_dir',
-                    default="snapshots", type=str)
-parser.add_argument('-data_dir', '--data_dir', default="data", type=str)
+                    default='snapshots', type=str)
+parser.add_argument('-data_dir', '--data_dir', default='data', type=str)
 parser.add_argument('-id', '--run_id', default=time.strftime('%d%b-%X'),
                     type=str)
 args = parser.parse_args()
@@ -58,7 +59,7 @@ tf_config.gpu_options.allow_growth = True
 tf_config.allow_soft_placement = True
 
 # BUILD GRAPH
-m = CPPN(tf_config=tf_config, my_config=my_config)
+m = FourierCPPN(tf_config=tf_config, my_config=my_config)
 
 # TRAIN
 m.train()

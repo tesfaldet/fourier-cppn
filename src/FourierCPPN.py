@@ -7,9 +7,10 @@ from src.utils.create_meshgrid import create_meshgrid
 from src.utils.check_snapshots import check_snapshots
 from src.PerceptualLoss import PerceptualLoss
 from src.utils.load_image import load_image
+from src.InceptionV1 import InceptionV1
 
 
-class CPPN:
+class FourierCPPN:
     def __init__(self,
                  my_config,
                  tf_config):
@@ -63,15 +64,10 @@ class CPPN:
                 weight_init = \
                     tf.initializers \
                       .random_normal(0, tf.sqrt(1.0 / prev_num_channels))
-                bias_init = \
-                    tf.initializers \
-                      .random_uniform(self.input_coord_min,
-                                      self.input_coord_max)
                 layer = \
                     ConvLayer(layer_name, prev_layer,
                               out_channels=self.my_config['cppn_num_neurons'],
                               weight_init=weight_init,
-                              bias_init=bias_init,
                               activation=self.my_config['cppn_activation'])
                 self.cppn_layers.append((layer_name, layer))
 
@@ -118,15 +114,16 @@ class CPPN:
                                   self.fourier_meshgrid, self.coeffs_b)
 
         # Construct RGB output 1 x H x W x 3
-        self.output = tf.concat([self.output_r,
-                                 self.output_g,
-                                 self.output_b], axis=-1)
+        self.output_pre_sigmoid = tf.concat([self.output_r,
+                                             self.output_g,
+                                             self.output_b], axis=-1)
 
-        self.output = tf.sigmoid(self.output)
+        self.output = tf.sigmoid(self.output_pre_sigmoid)
 
         # OBJECTIVE
         target_path = os.path.join(self.my_config['data_dir'],
-                                   'textures', 'pebbles.jpg')
+                                   'textures',
+                                   self.my_config['target_image_name'])
         self.target_dimensions = self.my_config['target_dimensions'].split(',')
         self.target_width = int(self.target_dimensions[0])
         self.target_height = int(self.target_dimensions[1])
@@ -137,6 +134,10 @@ class CPPN:
                            self.target,
                            style_layers=self.my_config['style_layers']
                                             .split(',')).style_loss
+        # self.loss = -InceptionV1('InceptionV1Loss', self.output)\
+        #     .avg_channel("mixed4b_3x3_pre_relu", 77)
+        # self.loss = -InceptionV1('InceptionV1Loss', self.output)\
+        #     .avg_channel('mixed4b_pool_reduce_pre_relu', 16)
 
         self.build_summaries()
 
@@ -148,53 +149,69 @@ class CPPN:
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)
 
+            tf.summary.scalar('RGB_min', tf.reduce_min(self.output))
+            tf.summary.scalar('RGB_max', tf.reduce_max(self.output))
+            tf.summary.scalar('RGB_mean', tf.reduce_mean(self.output))
+
+            tf.summary.scalar('RGB_pre_sigmoid_min',
+                              tf.reduce_min(self.output_pre_sigmoid))
+            tf.summary.scalar('RGB_pre_sigmoid_max',
+                              tf.reduce_max(self.output_pre_sigmoid))
+            tf.summary.scalar('RGB_pre_sigmoid_mean',
+                              tf.reduce_mean(self.output_pre_sigmoid))
+
             # Merge all summaries
             self.summaries = tf.summary.merge_all()
 
     def train(self):
         global_step = tf.Variable(0, trainable=False)
-        opt = tf.train.AdamOptimizer(
-            learning_rate=self.my_config['learning_rate'])
-        train_step = opt.minimize(self.loss)
 
-        saver = tf.train.Saver(max_to_keep=0, pad_step_number=16)
+        opt = tf.contrib.opt.ScipyOptimizerInterface(
+            self.loss, method='L-BFGS-B',
+            options={'maxfun': self.my_config['iterations']})
 
-        with tf.Session(config=self.tf_config) as sess:
-            resume, iterations_so_far = \
+        self.saver = tf.train.Saver(max_to_keep=0, pad_step_number=16)
+
+        with tf.Session(config=self.tf_config) as self.sess:
+            resume, self.iterations_so_far = \
                 check_snapshots(self.my_config['run_id'])
-            writer = tf.summary.FileWriter(
+            self.start_iteration = self.iterations_so_far
+            self.writer = tf.summary.FileWriter(
                 os.path.join(self.my_config["log_dir"],
-                             self.my_config['run_id']), sess.graph)
+                             self.my_config['run_id']), self.sess.graph)
 
             if resume:
-                saver.restore(sess, resume)
+                self.saver.restore(self.sess, resume)
             else:
-                sess.run(tf.global_variables_initializer())
+                self.sess.run(tf.global_variables_initializer())
 
-            for i in range(iterations_so_far, self.my_config['iterations']):
-                train_feed_dict = {global_step: i}
-                results = sess.run([train_step, self.loss, self.summaries],
-                                   feed_dict=train_feed_dict)
-                loss = results[1]
-                train_summary = results[2]
+            opt.minimize(self.sess,
+                         fetches=[self.loss, self.summaries],
+                         feed_dict={global_step: self.iterations_so_far},
+                         loss_callback=self.minimize_callback)
 
-                # Saving/Logging
-                if i % self.my_config['print_frequency'] == 0:
-                    print('(' + self.my_config['run_id'] + ') ' +
-                          'Iteration ' + str(i) +
-                          ', Loss: ' + str(loss))
+    def minimize_callback(self, loss, summaries):
+        i = self.iterations_so_far
 
-                if i % self.my_config['log_frequency'] == 0:
-                    writer.add_summary(train_summary, i)
-                    writer.flush()
+        # Saving/Logging
+        if i % self.my_config['print_frequency'] == 0:
+            print('(' + self.my_config['run_id'] + ') ' +
+                  'Iteration ' + str(i) +
+                  ', Loss: ' + str(loss))
 
-                if i % self.my_config['snapshot_frequency'] == 0 and \
-                   i != iterations_so_far:
-                    print('Saving Snapshot...')
-                    saver.save(sess,
-                               os.path.join(self.my_config['snapshot_dir'],
-                                            self.my_config['run_id'],
-                                            'snapshot_iter'), global_step=i)
+        if i % self.my_config['log_frequency'] == 0:
+            self.writer.add_summary(summaries, i)
+            self.writer.flush()
+
+        if i % self.my_config['snapshot_frequency'] == 0 and \
+           i != self.start_iteration:
+            print('Saving Snapshot...')
+            self.saver.save(self.sess,
+                            os.path.join(self.my_config['snapshot_dir'],
+                                         self.my_config['run_id'],
+                                         'snapshot_iter'), global_step=i)
+
+        self.iterations_so_far += 1
 
     def validate(self):
         pass

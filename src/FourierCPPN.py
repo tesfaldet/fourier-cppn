@@ -7,6 +7,7 @@ from src.utils.create_meshgrid import create_meshgrid
 from src.utils.check_snapshots import check_snapshots
 from src.PerceptualLoss import PerceptualLoss
 from src.utils.load_image import load_image
+from src.utils.write_images import write_images
 from src.InceptionV1 import InceptionV1
 
 
@@ -186,11 +187,11 @@ class FourierCPPN:
                 self.sess.run(tf.global_variables_initializer())
 
             opt.minimize(self.sess,
-                         fetches=[self.loss, self.summaries],
+                         fetches=[self.loss, self.summaries, self.output],
                          feed_dict={global_step: self.iterations_so_far},
                          loss_callback=self.minimize_callback)
 
-    def minimize_callback(self, loss, summaries):
+    def minimize_callback(self, loss, summaries, output):
         i = self.iterations_so_far
 
         # Saving/Logging
@@ -211,10 +212,23 @@ class FourierCPPN:
                                          self.my_config['run_id'],
                                          'snapshot_iter'), global_step=i)
 
+        if i % self.my_config['write_frequency'] == 0:
+            target_path = os.path.join(self.my_config['data_dir'], 'out',
+                                       'train', self.my_config['run_id'])
+            write_images(output, target_path, training_iteration=i)
+
         self.iterations_so_far += 1
 
     def validate(self):
         pass
 
-    def predict(self):
-        pass
+    def predict(self, model_path):
+        saver = tf.train.Saver(max_to_keep=0, pad_step_number=16)
+        checkpoint_path = tf.train.latest_checkpoint(model_path)
+
+        with tf.Session(config=self.tf_config) as sess:
+            saver.restore(sess, checkpoint_path)
+            output = sess.run(self.output)
+            target_path = os.path.join(self.my_config['data_dir'], 'out',
+                                       'predict')
+            write_images(output, target_path)

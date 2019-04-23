@@ -31,6 +31,7 @@ args = parser.parse_args()
 my_config = {}
 my_config['batch_size'] = args.batch_size
 my_config['learning_rate'] = args.learning_rate
+my_config['write_frequency'] = args.write_frequency
 my_config['snapshot_frequency'] = args.snapshot_frequency
 my_config['print_frequency'] = args.print_frequency
 my_config['log_frequency'] = args.log_frequency

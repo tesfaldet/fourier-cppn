@@ -175,7 +175,8 @@ class FourierCPPN:
 
         with tf.Session(config=self.tf_config) as self.sess:
             resume, self.iterations_so_far = \
-                check_snapshots(self.my_config['run_id'])
+                check_snapshots(self.my_config['run_id'],
+                                self.my_config['force_train_from_scratch'])
             self.start_iteration = self.iterations_so_far
             self.writer = tf.summary.FileWriter(
                 os.path.join(self.my_config["log_dir"],
@@ -191,6 +192,14 @@ class FourierCPPN:
                          feed_dict={global_step: self.iterations_so_far},
                          loss_callback=self.minimize_callback)
 
+            # Snapshot at end of optimization since BFGS updates vars at end
+            print('Saving Snapshot...')
+            self.saver.save(self.sess,
+                            os.path.join(self.my_config['snap_dir'],
+                                         self.my_config['run_id'],
+                                         'snapshot_iter'),
+                            global_step=self.iterations_so_far)
+
     def minimize_callback(self, loss, summaries, output):
         i = self.iterations_so_far
 
@@ -204,14 +213,6 @@ class FourierCPPN:
             self.writer.add_summary(summaries, i)
             self.writer.flush()
 
-        if i % self.my_config['snapshot_frequency'] == 0 and \
-           i != self.start_iteration:
-            print('Saving Snapshot...')
-            self.saver.save(self.sess,
-                            os.path.join(self.my_config['snapshot_dir'],
-                                         self.my_config['run_id'],
-                                         'snapshot_iter'), global_step=i)
-
         if i % self.my_config['write_frequency'] == 0:
             target_path = os.path.join(self.my_config['data_dir'], 'out',
                                        'train', self.my_config['run_id'])
@@ -223,7 +224,7 @@ class FourierCPPN:
         pass
 
     def predict(self, model_path):
-        saver = tf.train.Saver(max_to_keep=0, pad_step_number=16)
+        saver = tf.train.Saver()
         checkpoint_path = tf.train.latest_checkpoint(model_path)
 
         with tf.Session(config=self.tf_config) as sess:

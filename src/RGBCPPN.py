@@ -6,6 +6,7 @@ from src.utils.create_meshgrid import create_meshgrid
 from src.utils.check_snapshots import check_snapshots
 from src.PerceptualLoss import PerceptualLoss
 from src.utils.load_image import load_image
+from src.utils.write_images import write_images
 from src.InceptionV1 import InceptionV1
 
 
@@ -106,7 +107,8 @@ class RGBCPPN:
 
         with tf.Session(config=self.tf_config) as self.sess:
             resume, self.iterations_so_far = \
-                check_snapshots(self.my_config['run_id'])
+                check_snapshots(self.my_config['run_id'],
+                                self.my_config['force_train_from_scratch'])
             self.start_iteration = self.iterations_so_far
             self.writer = tf.summary.FileWriter(
                 os.path.join(self.my_config["log_dir"],
@@ -122,6 +124,14 @@ class RGBCPPN:
                          feed_dict={global_step: self.iterations_so_far},
                          loss_callback=self.minimize_callback)
 
+            # Snapshot at end of optimization since BFGS updates vars at end
+            print('Saving Snapshot...')
+            self.saver.save(self.sess,
+                            os.path.join(self.my_config['snap_dir'],
+                                         self.my_config['run_id'],
+                                         'snapshot_iter'),
+                            global_step=self.iterations_so_far)
+
     def minimize_callback(self, loss, summaries):
         i = self.iterations_so_far
 
@@ -135,18 +145,18 @@ class RGBCPPN:
             self.writer.add_summary(summaries, i)
             self.writer.flush()
 
-        if i % self.my_config['snapshot_frequency'] == 0 and \
-           i != self.start_iteration:
-            print('Saving Snapshot...')
-            self.saver.save(self.sess,
-                            os.path.join(self.my_config['snapshot_dir'],
-                                         self.my_config['run_id'],
-                                         'snapshot_iter'), global_step=i)
-
         self.iterations_so_far += 1
 
     def validate(self):
         pass
 
     def predict(self):
-        pass
+        saver = tf.train.Saver()
+        checkpoint_path = tf.train.latest_checkpoint(model_path)
+
+        with tf.Session(config=self.tf_config) as sess:
+            saver.restore(sess, checkpoint_path)
+            output = sess.run(self.output)
+            target_path = os.path.join(self.my_config['data_dir'], 'out',
+                                       'predict')
+            write_images(output, target_path)

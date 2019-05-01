@@ -18,7 +18,7 @@ class FourierCPPN:
         self.tf_config = tf_config
         self.my_config = my_config
         self.build_graph()
-        print('CPPN Num Variables: ',
+        print('Fourier CPPN Num Variables: ',
               np.sum([np.product([xi.value for xi in x.get_shape()])
                       for x in tf.global_variables()]))
 
@@ -167,58 +167,49 @@ class FourierCPPN:
     def train(self):
         global_step = tf.Variable(0, trainable=False)
 
-        opt = tf.contrib.opt.ScipyOptimizerInterface(
-            self.loss, method='L-BFGS-B',
-            options={'maxfun': self.my_config['iterations']})
+        opt = tf.train.AdamOptimizer(
+            learning_rate=self.my_config['learning_rate'])
+        train_step = opt.minimize(self.loss)
 
-        self.saver = tf.train.Saver(max_to_keep=0, pad_step_number=16)
+        saver = tf.train.Saver(max_to_keep=0, pad_step_number=16)
 
-        with tf.Session(config=self.tf_config) as self.sess:
-            resume, self.iterations_so_far = \
+        with tf.Session(config=self.tf_config) as sess:
+            resume, iterations_so_far = \
                 check_snapshots(self.my_config['run_id'],
                                 self.my_config['force_train_from_scratch'])
-            self.start_iteration = self.iterations_so_far
-            self.writer = tf.summary.FileWriter(
-                os.path.join(self.my_config["log_dir"],
-                             self.my_config['run_id']), self.sess.graph)
+            writer = tf.summary.FileWriter(
+                os.path.join(self.my_config['log_dir'],
+                             self.my_config['run_id']), sess.graph)
 
             if resume:
-                self.saver.restore(self.sess, resume)
+                saver.restore(sess, resume)
             else:
-                self.sess.run(tf.global_variables_initializer())
+                sess.run(tf.global_variables_initializer())
 
-            opt.minimize(self.sess,
-                         fetches=[self.loss, self.summaries, self.output],
-                         feed_dict={global_step: self.iterations_so_far},
-                         loss_callback=self.minimize_callback)
+            for i in range(iterations_so_far, self.my_config['iterations']):
+                train_feed_dict = {global_step: i}
+                results = sess.run([train_step, self.loss, self.summaries],
+                                   feed_dict=train_feed_dict)
+                loss = results[1]
+                train_summary = results[2]
 
-            # Snapshot at end of optimization since BFGS updates vars at end
-            print('Saving Snapshot...')
-            self.saver.save(self.sess,
-                            os.path.join(self.my_config['snap_dir'],
-                                         self.my_config['run_id'],
-                                         'snapshot_iter'),
-                            global_step=self.iterations_so_far)
+                # Saving/Logging
+                if i % self.my_config['print_frequency'] == 0:
+                    print('(' + self.my_config['run_id'] + ') ' +
+                          'Iteration ' + str(i) +
+                          ', Loss: ' + str(loss))
 
-    def minimize_callback(self, loss, summaries, output):
-        i = self.iterations_so_far
-
-        # Saving/Logging
-        if i % self.my_config['print_frequency'] == 0:
-            print('(' + self.my_config['run_id'] + ') ' +
-                  'Iteration ' + str(i) +
-                  ', Loss: ' + str(loss))
-
-        if i % self.my_config['log_frequency'] == 0:
-            self.writer.add_summary(summaries, i)
-            self.writer.flush()
-
-        if i % self.my_config['write_frequency'] == 0:
-            target_path = os.path.join(self.my_config['data_dir'], 'out',
-                                       'train', self.my_config['run_id'])
-            write_images(output, target_path, training_iteration=i)
-
-        self.iterations_so_far += 1
+                if i % self.my_config['log_frequency'] == 0:
+                    writer.add_summary(train_summary, i)
+                    writer.flush()
+                
+                if i % self.my_config['snapshot_frequency'] == 0 and \
+                   i != iterations_so_far:
+                    print('Saving Snapshot...')
+                    saver.save(sess,
+                               os.path.join(self.my_config['snap_dir'],
+                                            self.my_config['run_id'],
+                                            'snapshot_iter'), global_step=i)
 
     def validate(self):
         pass

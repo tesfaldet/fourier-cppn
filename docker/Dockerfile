@@ -14,4 +14,4 @@ RUN pip install opencv-python lucid \
 WORKDIR /src
 COPY . .
 
-CMD ["python3", "train.py"]
+CMD ["python3", "synthesize.py"]

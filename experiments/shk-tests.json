@@ -12,6 +12,7 @@
             "dimensions": {
                 "learning_rate": [5e-4],
                 "batch_size": [1],
+                "iterations": [100000],
                 "input_dimensions": ["224,224"],
                 "target_dimensions": ["224,224"],
                 "target_image_name": ["pebbles.jpg"],
@@ -23,6 +24,7 @@
                 "cppn_num_neurons": [24],
                 "cppn_activation": ["atan_concat"],
                 "style_layers": ["conv1_1/Relu,pool1,pool2,pool3,pool4"],
+                "content_layers": ["conv1_1/Relu,pool1,pool2,pool3,pool4"],
                 "cppn_fourier_dimensions": ["10,10"],
                 "cppn_fourier_coordinate_range": ["0,9"]
             }

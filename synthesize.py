@@ -13,7 +13,7 @@ from shuriken.utils import get_hparams
 parser = argparse.ArgumentParser(description='training')
 parser.add_argument('-g', '--gpu', default=1, type=int)
 parser.add_argument('-b', '--batch_size', default=1, type=int)
-parser.add_argument('-i', '--iterations', default=100000, type=int)
+parser.add_argument('-i', '--iterations', default=15000, type=int)
 parser.add_argument('-lr', '--learning_rate', default=5e-3, type=float)
 parser.add_argument('-logf', '--log_frequency', default=10, type=int)
 parser.add_argument('-printf', '--print_frequency', default=10, type=int)
@@ -27,6 +27,7 @@ parser.add_argument('-id', '--run_id', default=time.strftime('%d%b-%X'),
                     type=str)
 parser.add_argument('-predict', '--predict', default=False, type=bool)
 parser.add_argument('-rgb_cppn', '--rgb_cppn', default=False, type=bool)
+parser.add_argument('-bfgs', '--use_bfgs', default=True, type=bool)
 
 # Meant for training on Borgy when there's an existing snapshot and it needs
 # to be overridden, disregarding user input since it can't accept any
@@ -48,6 +49,7 @@ my_config['log_dir'] = args.log_dir
 my_config['snap_dir'] = args.snapshot_dir
 my_config['data_dir'] = args.data_dir
 my_config['force_train_from_scratch'] = args.force_train_from_scratch
+my_config['use_bfgs'] = args.use_bfgs
 
 # SHURIKEN MAGIC
 my_config.update(get_hparams())

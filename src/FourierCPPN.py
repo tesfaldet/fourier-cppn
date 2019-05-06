@@ -9,6 +9,7 @@ from src.PerceptualLoss import PerceptualLoss
 from src.utils.load_image import load_image
 from src.utils.write_images import write_images
 from src.InceptionV1 import InceptionV1
+from src.layers.MSELayer import MSELayer
 
 
 class FourierCPPN:
@@ -37,7 +38,19 @@ class FourierCPPN:
             self.input_meshgrid = \
                 create_meshgrid(self.input_width, self.input_height,
                                 self.input_coord_min, self.input_coord_max,
-                                self.input_coord_min, self.input_coord_max)
+                                self.input_coord_min, self.input_coord_max,
+                                2)
+            class_1 = tf.tile(tf.reshape(np.array([0., 1.],
+                                                  dtype=np.float32),
+                                         [1, 1, 1, 2]),
+                              [1, self.input_height, self.input_width, 1])
+            class_2 = tf.tile(tf.reshape(np.array([1., 0.],
+                                                  dtype=np.float32),
+                                         [1, 1, 1, 2]),
+                              [1, self.input_height, self.input_width, 1])
+            classes = tf.concat([class_1, class_2], axis=0)
+            self.input_meshgrid = tf.concat([self.input_meshgrid, classes],
+                                            axis=-1)
 
         with tf.name_scope('Fourier_Meshgrid'):
             self.f_dimensions = \
@@ -122,23 +135,38 @@ class FourierCPPN:
         self.output = tf.sigmoid(self.output_pre_sigmoid)
 
         # OBJECTIVE
-        target_path = os.path.join(self.my_config['data_dir'],
-                                   'textures',
-                                   self.my_config['target_image_name'])
+        target_path_1 = os.path.join(self.my_config['data_dir'],
+                                     'textures',
+                                     'peppers.jpg')
+        target_path_2 = os.path.join(self.my_config['data_dir'],
+                                     'textures',
+                                     'pebbles.jpg')
         self.target_dimensions = self.my_config['target_dimensions'].split(',')
         self.target_width = int(self.target_dimensions[0])
         self.target_height = int(self.target_dimensions[1])
-        self.target = tf.image.resize_images(
-            load_image(target_path), [self.target_width, self.target_height])
+        self.target_1 = tf.image.resize_images(
+            load_image(target_path_1), [self.target_height, self.target_width])
+        self.target_2 = tf.image.resize_images(
+            load_image(target_path_2), [self.target_height, self.target_width])
+        self.target = tf.concat([self.target_1, self.target_2], axis=0)
         self.loss = 1e5 * \
-            PerceptualLoss(self.my_config, self.output,
-                           self.target,
+            PerceptualLoss(self.my_config, self.output, self.target,
                            style_layers=self.my_config['style_layers']
                                             .split(',')).style_loss
         # self.loss = -InceptionV1('InceptionV1Loss', self.output)\
         #     .avg_channel("mixed4b_3x3_pre_relu", 77)
         # self.loss = -InceptionV1('InceptionV1Loss', self.output)\
         #     .avg_channel('mixed4b_pool_reduce_pre_relu', 16)
+        # target_path = os.path.join(self.my_config['data_dir'],
+        #                            'mattie.jpg')
+        # self.target = tf.image.resize_images(
+        #     load_image(target_path), [self.target_height, self.target_width])
+        # self.loss = 1e5 * MSELayer(self.output, self.target)
+        # self.loss += 1e5 * \
+        #     PerceptualLoss(self.my_config, self.output,
+        #                    self.target,
+        #                    style_layers=self.my_config['content_layers']
+        #                                     .split(',')).content_loss
 
         self.build_summaries()
 
@@ -146,6 +174,7 @@ class FourierCPPN:
         with tf.name_scope('Summaries'):
             # Output and Target
             tf.summary.image('Output', tf.cast(self.output * 255.0, tf.uint8))
+            tf.summary.image('Target', self.target)
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)
@@ -167,49 +196,99 @@ class FourierCPPN:
     def train(self):
         global_step = tf.Variable(0, trainable=False)
 
-        opt = tf.train.AdamOptimizer(
-            learning_rate=self.my_config['learning_rate'])
-        train_step = opt.minimize(self.loss)
+        if self.my_config['use_bfgs']:
+            opt = tf.contrib.opt.ScipyOptimizerInterface(
+                self.loss, method='L-BFGS-B',
+                options={'maxfun': self.my_config['iterations']})
+        else:
+            opt = tf.train.AdamOptimizer(
+                learning_rate=self.my_config['learning_rate'])
+            train_step = opt.minimize(self.loss)
 
-        saver = tf.train.Saver(max_to_keep=0, pad_step_number=16)
+        self.saver = tf.train.Saver(max_to_keep=0, pad_step_number=16)
 
-        with tf.Session(config=self.tf_config) as sess:
-            resume, iterations_so_far = \
+        with tf.Session(config=self.tf_config) as self.sess:
+            resume, self.iterations_so_far = \
                 check_snapshots(self.my_config['run_id'],
                                 self.my_config['force_train_from_scratch'])
-            writer = tf.summary.FileWriter(
+            self.writer = tf.summary.FileWriter(
                 os.path.join(self.my_config['log_dir'],
-                             self.my_config['run_id']), sess.graph)
+                             self.my_config['run_id']), self.sess.graph)
 
             if resume:
-                saver.restore(sess, resume)
+                self.saver.restore(self.sess, resume)
             else:
-                sess.run(tf.global_variables_initializer())
+                self.sess.run(tf.global_variables_initializer())
 
-            for i in range(iterations_so_far, self.my_config['iterations']):
-                train_feed_dict = {global_step: i}
-                results = sess.run([train_step, self.loss, self.summaries],
-                                   feed_dict=train_feed_dict)
-                loss = results[1]
-                train_summary = results[2]
+            if self.my_config['use_bfgs']:
+                opt.minimize(self.sess,
+                             fetches=[self.loss, self.summaries, self.output],
+                             feed_dict={global_step: self.iterations_so_far},
+                             loss_callback=self.minimize_callback)
 
-                # Saving/Logging
-                if i % self.my_config['print_frequency'] == 0:
-                    print('(' + self.my_config['run_id'] + ') ' +
-                          'Iteration ' + str(i) +
-                          ', Loss: ' + str(loss))
+                # Snapshot at end of optimization since BFGS updates vars
+                # at end
+                print('Saving Snapshot...')
+                self.saver.save(self.sess,
+                                os.path.join(self.my_config['snap_dir'],
+                                             self.my_config['run_id'],
+                                             'snapshot_iter'),
+                                global_step=self.iterations_so_far)
+            else:
+                for i in range(self.iterations_so_far,
+                               self.my_config['iterations']):
+                    train_feed_dict = {global_step: i}
+                    results = self.sess.run([train_step, self.loss,
+                                             self.summaries, self.output],
+                                            feed_dict=train_feed_dict)
+                    loss = results[1]
+                    train_summary = results[2]
+                    output = results[3]
 
-                if i % self.my_config['log_frequency'] == 0:
-                    writer.add_summary(train_summary, i)
-                    writer.flush()
-                
-                if i % self.my_config['snapshot_frequency'] == 0 and \
-                   i != iterations_so_far:
-                    print('Saving Snapshot...')
-                    saver.save(sess,
-                               os.path.join(self.my_config['snap_dir'],
-                                            self.my_config['run_id'],
-                                            'snapshot_iter'), global_step=i)
+                    # Saving/Logging
+                    if i % self.my_config['print_frequency'] == 0:
+                        print('(' + self.my_config['run_id'] + ') ' +
+                              'Iteration ' + str(i) +
+                              ', Loss: ' + str(loss))
+
+                    if i % self.my_config['log_frequency'] == 0:
+                        self.writer.add_summary(train_summary, i)
+                        self.writer.flush()
+
+                    if i % self.my_config['snapshot_frequency'] == 0 and \
+                       i != self.iterations_so_far:
+                        print('Saving Snapshot...')
+                        self.saver.save(self.sess,
+                                        os.path.join(self.my_config['snap_dir'],
+                                                     self.my_config['run_id'],
+                                                     'snapshot_iter'),
+                                        global_step=i)
+                    
+                    if i % self.my_config['write_frequency'] == 0:
+                        target_path = os.path.join(self.my_config['data_dir'],
+                                                   'out', 'train',
+                                                   self.my_config['run_id'])
+                        write_images(output, target_path, training_iteration=i)
+
+    def minimize_callback(self, loss, summaries, output):
+        i = self.iterations_so_far
+
+        # Saving/Logging
+        if i % self.my_config['print_frequency'] == 0:
+            print('(' + self.my_config['run_id'] + ') ' +
+                  'Iteration ' + str(i) +
+                  ', Loss: ' + str(loss))
+
+        if i % self.my_config['log_frequency'] == 0:
+            self.writer.add_summary(summaries, i)
+            self.writer.flush()
+
+        if i % self.my_config['write_frequency'] == 0:
+            target_path = os.path.join(self.my_config['data_dir'], 'out',
+                                       'train', self.my_config['run_id'])
+            write_images(output, target_path, training_iteration=i)
+
+        self.iterations_so_far += 1
 
     def validate(self):
         pass

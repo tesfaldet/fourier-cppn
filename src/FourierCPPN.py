@@ -3,7 +3,9 @@ import numpy as np
 import os
 from src.layers.ConvLayer import ConvLayer
 from src.layers.IDFTLayer import IDFTLayer
+from src.layers.EmbeddingLayer import EmbeddingLayer
 from src.utils.create_meshgrid import create_meshgrid
+from src.utils.create_meshgrid_numpy import create_meshgrid_numpy
 from src.utils.check_snapshots import check_snapshots
 from src.PerceptualLoss import PerceptualLoss
 from src.utils.load_image import load_image
@@ -14,8 +16,10 @@ from src.layers.MSELayer import MSELayer
 
 class FourierCPPN:
     def __init__(self,
+                 dataset,
                  my_config,
                  tf_config):
+        self.dataset = dataset
         self.tf_config = tf_config
         self.my_config = my_config
         self.build_graph()
@@ -24,35 +28,58 @@ class FourierCPPN:
                       for x in tf.global_variables()]))
 
     def build_graph(self):
-        # COORDINATE MESHGRID INPUT
-        with tf.name_scope('Input_Meshgrid'):
-            # TODO: clean this up
-            self.input_dimensions = \
-                self.my_config['input_dimensions'].split(',')
-            self.input_width = int(self.input_dimensions[0])
-            self.input_height = int(self.input_dimensions[1])
-            self.input_coord_range = \
-                self.my_config['cppn_input_coordinate_range'].split(',')
-            self.input_coord_min = eval(self.input_coord_range[0])
-            self.input_coord_max = eval(self.input_coord_range[1])
-            self.input_meshgrid = \
-                create_meshgrid(self.input_width, self.input_height,
-                                self.input_coord_min, self.input_coord_max,
-                                self.input_coord_min, self.input_coord_max,
-                                2)
-            class_1 = tf.tile(tf.reshape(np.array([0., 1.],
-                                                  dtype=np.float32),
-                                         [1, 1, 1, 2]),
-                              [1, self.input_height, self.input_width, 1])
-            class_2 = tf.tile(tf.reshape(np.array([1., 0.],
-                                                  dtype=np.float32),
-                                         [1, 1, 1, 2]),
-                              [1, self.input_height, self.input_width, 1])
-            classes = tf.concat([class_1, class_2], axis=0)
-            self.input_meshgrid = tf.concat([self.input_meshgrid, classes],
-                                            axis=-1)
+        trainable = self.my_config['train']
 
-        with tf.name_scope('Fourier_Meshgrid'):
+        # GRAPH DATA
+        with tf.name_scope('Data'):
+            if trainable:
+                self.next_batch = self.dataset.iterator.get_next()
+                self.input_coord = self.next_batch[0]  # B x H x W x 2
+                self.target = self.next_batch[1]  # B x H x W x 3
+                self.index = self.next_batch[2]  # B
+                self.batch_size = tf.shape(self.input_coord)[0]
+            else:
+                self.input_coord = \
+                    tf.placeholder(tf.float32, shape=[None, None, None, 2])
+                self.index = \
+                    tf.placeholder(tf.int32, shape=[None])
+                self.batch_size = tf.shape(self.input_coord)[0]
+
+            dataset_size = 4
+
+            # B x latent size
+            self.latent_vector = \
+                EmbeddingLayer('em1', self.index,
+                               self.my_config['cppn_latent_size'],
+                               dataset_size,
+                               trainable=trainable)
+            # B x 1 x 1 x latent size
+            self.latent_vector = \
+                tf.reshape(self.latent_vector,
+                           [self.batch_size, 1, 1,
+                            self.my_config['cppn_latent_size']])
+            input_height = tf.shape(self.input_coord)[1]
+            input_width = tf.shape(self.input_coord)[2]
+            # B x H x W x latent size
+            self.latent_vector = tf.tile(self.latent_vector,
+                                         [1, input_height, input_width, 1])
+
+            # Input meshgrid in cppn scale B x H x W x 2
+            self.input_coord_rescaled = \
+                self.input_coord * \
+                eval(self.my_config['cppn_coord_scale_factor'])
+
+            self.input_coord_rescaled *= \
+                (self.my_config['cppn_latent_size'] / 2.0)
+
+            # B x H x W x (2 + latent size)
+            self.input = \
+                tf.concat([self.input_coord_rescaled, self.latent_vector],
+                          axis=-1)
+            self.input.set_shape([None, None, None,
+                                  2 + self.my_config['cppn_latent_size']])
+
+        with tf.name_scope('Fourier_Coordinates'):
             self.f_dimensions = \
                 self.my_config['cppn_fourier_dimensions'].split(',')
             self.f_width = int(self.f_dimensions[0])
@@ -62,119 +89,135 @@ class FourierCPPN:
             self.fourier_coord_min = eval(self.fourier_coord_range[0])
             self.fourier_coord_max = eval(self.fourier_coord_range[1])
             self.fourier_basis_size = self.f_width * self.f_height
-            self.fourier_meshgrid = \
+
+            # B x H_f x W_f x 2
+            self.fourier_coord = \
                 create_meshgrid(self.f_width, self.f_height,
                                 self.fourier_coord_min, self.fourier_coord_max,
-                                self.fourier_coord_min, self.fourier_coord_max)
+                                self.fourier_coord_min, self.fourier_coord_max,
+                                batch_size=self.batch_size)
 
         # CPPN OUTPUT
         with tf.name_scope('CPPN'):
-            self.cppn_layers = [('input', self.input_meshgrid)]
+            self.cppn_layers = [('input', self.input)]
             for i in range(self.my_config['cppn_num_layers']):
                 prev_layer = self.cppn_layers[i][1]
-                prev_num_channels = tf.cast(tf.shape(prev_layer)[-1],
+                prev_num_channels = tf.cast(prev_layer.shape[-1],
                                             tf.float32)
                 layer_name = 'fc' + str(i + 1)
                 weight_init = \
                     tf.initializers \
                       .random_normal(0, tf.sqrt(1.0 / prev_num_channels))
+                out_channels = self.my_config['cppn_num_neurons']
+                if (i + 1) == self.my_config['cppn_num_layers']:
+                    out_channels *= 3  # for RGB
                 layer = \
                     ConvLayer(layer_name, prev_layer,
-                              out_channels=self.my_config['cppn_num_neurons'],
+                              out_channels=out_channels,
                               weight_init=weight_init,
-                              activation=self.my_config['cppn_activation'])
+                              activation=self.my_config['cppn_activation'],
+                              trainable=trainable)
                 self.cppn_layers.append((layer_name, layer))
 
-            # Outputting amplitudes aka Fourier mixin coefficients for a
-            # basis set of exponentials aka sinusoids at different frequencies
-            # 1 x H x W x (H_f x W_f x 2)
-            self.coeffs = ConvLayer('coefficients', self.cppn_layers[-1][1],
-                                    self.fourier_basis_size * 2 * 3,
-                                    activation=None)
+            # Split activations into thirds, each corresponding to a colour
+            # channel.
+            colour_layer = self.cppn_layers[-1][1]
+            colour_layer_r = colour_layer[...,
+                                          :self.my_config['cppn_num_neurons']]
+            colour_layer_g = colour_layer[...,
+                                          self.my_config['cppn_num_neurons']:
+                                          self.my_config['cppn_num_neurons']*2]
+            colour_layer_b = colour_layer[...,
+                                          self.my_config['cppn_num_neurons']*2:
+                                          self.my_config['cppn_num_neurons']*3]
 
-            # Make fourier coefficients complex 1 x H x W x (H_f x W_f)
+            # (dx, dy) phase shifts for each row of the weight matrix for the
+            # following conv layer.
+            # B x H x W x (cppn_num_neurons x 2)
+            phase_shifts = \
+                ConvLayer('phase_shifts', self.cppn_layers[-2][1],
+                          out_channels=self.my_config['cppn_num_neurons'] * 2,
+                          activation=None, trainable=trainable)
+
+            def phase_shift(weights, phase_shifts):
+                complex_weights = tf.dtypes.complex(
+                    weights[..., :self.fourier_basis_size],
+                    weights[..., self.fourier_basis_size:])
+
+            # The weights of these convs correspond to an image basis in
+            # Fourier space. Each row corresponds to a frequency representation
+            # of an image, and each column is the mixin coefficient of a
+            # sinusoid at a specific frequency. Left to right indexes from low
+            # to high frequency.
+            #
+            # Each Fourier image (each row) will be phase shifted by its own
+            # (dx, dy) before being combined with activations.
+            #
+            # The convs linearly combine the Fourier image basis with the
+            # activations from the previous layer (split into R, G, and B) to
+            # produce a single Fourier image for a colour channel, which
+            # will be sampled at the current pixel coordinate.
+            # B x H x W x (H_f x W_f x 2)
+            coeffs_r = \
+                ConvLayer('coefficients', colour_layer_r,
+                          out_channels=self.fourier_basis_size * 2,
+                          activation=None, trainable=trainable)
+            coeffs_g = \
+                ConvLayer('coefficients', colour_layer_g,
+                          out_channels=self.fourier_basis_size * 2,
+                          activation=None, trainable=trainable)
+            coeffs_b = \
+                ConvLayer('coefficients', colour_layer_b,
+                          out_channels=self.fourier_basis_size * 2,
+                          activation=None, trainable=trainable)
+
+            # Make Fourier coefficients complex B x H x W x (H_f x W_f)
             self.coeffs_r = tf.dtypes.complex(
-                 self.coeffs[..., :self.fourier_basis_size*1],
-                 self.coeffs[...,
-                             self.fourier_basis_size*1:
-                             self.fourier_basis_size*2])
+                 coeffs_r[..., :self.fourier_basis_size],
+                 coeffs_r[..., self.fourier_basis_size:])
             self.coeffs_g = tf.dtypes.complex(
-                 self.coeffs[...,
-                             self.fourier_basis_size*2:
-                             self.fourier_basis_size*3],
-                 self.coeffs[...,
-                             self.fourier_basis_size*3:
-                             self.fourier_basis_size*4])
+                 coeffs_g[..., :self.fourier_basis_size],
+                 coeffs_g[..., self.fourier_basis_size:])
             self.coeffs_b = tf.dtypes.complex(
-                 self.coeffs[...,
-                             self.fourier_basis_size*4:
-                             self.fourier_basis_size*5],
-                 self.coeffs[...,
-                             self.fourier_basis_size*5:
-                             self.fourier_basis_size*6])
+                 coeffs_b[..., :self.fourier_basis_size],
+                 coeffs_b[..., self.fourier_basis_size:])
 
-        # Input meshgrid in pixel scale
-        self.input_meshgrid_rescaled = \
-            create_meshgrid(self.input_width, self.input_height,
-                            0, self.input_width - 1,
-                            0, self.input_height - 1)
+        with tf.name_scope('IDFT'):
+            # Each output is B x H x W x 1
+            self.output_r = IDFTLayer('output_r', self.input_coord,
+                                      self.fourier_coord, self.coeffs_r)
+            self.output_g = IDFTLayer('output_g', self.input_coord,
+                                      self.fourier_coord, self.coeffs_g)
+            self.output_b = IDFTLayer('output_b', self.input_coord,
+                                      self.fourier_coord, self.coeffs_b)
 
-        # Each output is 1 x H x W x 1
-        self.output_r = IDFTLayer('output_r', self.input_meshgrid_rescaled,
-                                  self.fourier_meshgrid, self.coeffs_r)
-        self.output_g = IDFTLayer('output_g', self.input_meshgrid_rescaled,
-                                  self.fourier_meshgrid, self.coeffs_g)
-        self.output_b = IDFTLayer('output_b', self.input_meshgrid_rescaled,
-                                  self.fourier_meshgrid, self.coeffs_b)
+        with tf.name_scope('Output'):
+            # Construct RGB output B x H x W x 3
+            self.output_pre_sigmoid = tf.concat([self.output_r,
+                                                 self.output_g,
+                                                 self.output_b], axis=-1)
 
-        # Construct RGB output 1 x H x W x 3
-        self.output_pre_sigmoid = tf.concat([self.output_r,
-                                             self.output_g,
-                                             self.output_b], axis=-1)
-
-        self.output = tf.sigmoid(self.output_pre_sigmoid)
+            self.output = tf.sigmoid(self.output_pre_sigmoid)
 
         # OBJECTIVE
-        target_path_1 = os.path.join(self.my_config['data_dir'],
-                                     'textures',
-                                     'peppers.jpg')
-        target_path_2 = os.path.join(self.my_config['data_dir'],
-                                     'textures',
-                                     'pebbles.jpg')
-        self.target_dimensions = self.my_config['target_dimensions'].split(',')
-        self.target_width = int(self.target_dimensions[0])
-        self.target_height = int(self.target_dimensions[1])
-        self.target_1 = tf.image.resize_images(
-            load_image(target_path_1), [self.target_height, self.target_width])
-        self.target_2 = tf.image.resize_images(
-            load_image(target_path_2), [self.target_height, self.target_width])
-        self.target = tf.concat([self.target_1, self.target_2], axis=0)
-        self.loss = 1e5 * \
-            PerceptualLoss(self.my_config, self.output, self.target,
-                           style_layers=self.my_config['style_layers']
-                                            .split(',')).style_loss
-        # self.loss = -InceptionV1('InceptionV1Loss', self.output)\
-        #     .avg_channel("mixed4b_3x3_pre_relu", 77)
-        # self.loss = -InceptionV1('InceptionV1Loss', self.output)\
-        #     .avg_channel('mixed4b_pool_reduce_pre_relu', 16)
-        # target_path = os.path.join(self.my_config['data_dir'],
-        #                            'mattie.jpg')
-        # self.target = tf.image.resize_images(
-        #     load_image(target_path), [self.target_height, self.target_width])
-        # self.loss = 1e5 * MSELayer(self.output, self.target)
-        # self.loss += 1e5 * \
-        #     PerceptualLoss(self.my_config, self.output,
-        #                    self.target,
-        #                    style_layers=self.my_config['content_layers']
-        #                                     .split(',')).content_loss
+        if self.my_config['train']:
+            self.loss = 1e5 * \
+                PerceptualLoss(self.my_config, self.output, self.target,
+                               style_layers=self.my_config['style_layers']
+                                                .split(',')).style_loss
 
-        self.build_summaries()
+            # Average loss over batch
+            self.loss = self.loss / tf.cast(self.batch_size, tf.float32)
+
+            self.build_summaries()
 
     def build_summaries(self):
         with tf.name_scope('Summaries'):
             # Output and Target
-            tf.summary.image('Output', tf.cast(self.output * 255.0, tf.uint8))
-            tf.summary.image('Target', self.target)
+            tf.summary.image('Output', tf.cast(self.output * 255.0, tf.uint8),
+                             max_outputs=2)
+            tf.summary.image('Target', self.target,
+                             max_outputs=2)
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)
@@ -189,6 +232,33 @@ class FourierCPPN:
                               tf.reduce_max(self.output_pre_sigmoid))
             tf.summary.scalar('RGB_pre_sigmoid_mean',
                               tf.reduce_mean(self.output_pre_sigmoid))
+
+            # Visualize basis textures
+            # name = 'fc' + str(self.my_config['cppn_num_layers'] + 1)
+            # with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
+            #     basis_coeffs = tf.get_variable('weight')  # 1 x 1 x 24 x 200
+            #     # 1 x 1 x 24 x 100
+            #     basis_coeffs = tf.dtypes.complex(
+            #         basis_coeffs[..., :self.fourier_basis_size],
+            #         basis_coeffs[...,
+            #                      self.fourier_basis_size:
+            #                      self.fourier_basis_size*2])
+            #     # 1 x H_f x W_f x 2
+            #     input_coord = \
+            #         create_meshgrid(self.f_width, self.f_height,
+            #                         0, self.f_width - 1,
+            #                         0, self.f_height - 1,
+            #                         batch_size=tf.constant(1))
+            #     # 1 x H_f x W_f x 2
+            #     fourier_coord = self.fourier_coord[:1]
+            #     for i in range(self.my_config['cppn_num_neurons']):
+            #         coeffs = basis_coeffs[:, :, i, :]  # 1 x 1 x 100
+            #         coeffs = tf.expand_dims(coeffs, axis=0)  # 1 x 1 x 1 x 100
+            #         name = 'texture_' + str(i + 1)
+            #         # 1 x H_f x W_f x 1
+            #         image = IDFTLayer(name, input_coord, fourier_coord, coeffs)
+            #         image = tf.tile(image, [1, 10, 10, 1])
+            #         tf.summary.image(name, image)
 
             # Merge all summaries
             self.summaries = tf.summary.merge_all()
@@ -205,42 +275,53 @@ class FourierCPPN:
                 learning_rate=self.my_config['learning_rate'])
             train_step = opt.minimize(self.loss)
 
-        self.saver = tf.train.Saver(max_to_keep=0, pad_step_number=16)
+        saver = tf.train.Saver(max_to_keep=0, pad_step_number=16)
 
-        with tf.Session(config=self.tf_config) as self.sess:
+        saved_iterator = \
+            tf.data.experimental\
+              .make_saveable_from_iterator(self.dataset.iterator)
+        tf.add_to_collection(tf.GraphKeys.SAVEABLE_OBJECTS, saved_iterator)
+
+        with tf.Session(config=self.tf_config) as sess:
             resume, self.iterations_so_far = \
                 check_snapshots(self.my_config['run_id'],
                                 self.my_config['force_train_from_scratch'])
             self.writer = tf.summary.FileWriter(
                 os.path.join(self.my_config['log_dir'],
-                             self.my_config['run_id']), self.sess.graph)
+                             self.my_config['run_id']), sess.graph)
 
             if resume:
-                self.saver.restore(self.sess, resume)
+                saver.restore(sess, resume)
             else:
-                self.sess.run(tf.global_variables_initializer())
+                sess.run(tf.global_variables_initializer())
+
+            train_handle = sess.run(self.dataset.get_training_handle())
 
             if self.my_config['use_bfgs']:
-                opt.minimize(self.sess,
+                train_feed_dict = {global_step: self.iterations_so_far,
+                                   self.dataset.handle: train_handle}
+
+                opt.minimize(sess,
                              fetches=[self.loss, self.summaries, self.output],
-                             feed_dict={global_step: self.iterations_so_far},
+                             feed_dict=train_feed_dict,
                              loss_callback=self.minimize_callback)
 
                 # Snapshot at end of optimization since BFGS updates vars
-                # at end
+                # at the end
                 print('Saving Snapshot...')
-                self.saver.save(self.sess,
-                                os.path.join(self.my_config['snap_dir'],
-                                             self.my_config['run_id'],
-                                             'snapshot_iter'),
-                                global_step=self.iterations_so_far)
+                saver.save(sess,
+                           os.path.join(self.my_config['snap_dir'],
+                                        self.my_config['run_id'],
+                                        'snapshot_iter'),
+                           global_step=self.iterations_so_far)
             else:
                 for i in range(self.iterations_so_far,
                                self.my_config['iterations']):
-                    train_feed_dict = {global_step: i}
-                    results = self.sess.run([train_step, self.loss,
-                                             self.summaries, self.output],
-                                            feed_dict=train_feed_dict)
+                    train_feed_dict = {global_step: self.iterations_so_far,
+                                       self.dataset.handle: train_handle}
+                    results = sess.run([train_step, self.loss,
+                                        self.summaries, self.output],
+                                       feed_dict=train_feed_dict)
                     loss = results[1]
                     train_summary = results[2]
                     output = results[3]
@@ -258,12 +339,12 @@ class FourierCPPN:
                     if i % self.my_config['snapshot_frequency'] == 0 and \
                        i != self.iterations_so_far:
                         print('Saving Snapshot...')
-                        self.saver.save(self.sess,
-                                        os.path.join(self.my_config['snap_dir'],
-                                                     self.my_config['run_id'],
-                                                     'snapshot_iter'),
-                                        global_step=i)
-                    
+                        saver.save(sess,
+                                   os.path.join(self.my_config['snap_dir'],
+                                                self.my_config['run_id'],
+                                                'snapshot_iter'),
+                                   global_step=i)
+
                     if i % self.my_config['write_frequency'] == 0:
                         target_path = os.path.join(self.my_config['data_dir'],
                                                    'out', 'train',
@@ -290,16 +371,21 @@ class FourierCPPN:
 
         self.iterations_so_far += 1
 
-    def validate(self):
-        pass
-
     def predict(self, model_path):
         saver = tf.train.Saver()
         checkpoint_path = tf.train.latest_checkpoint(model_path)
 
         with tf.Session(config=self.tf_config) as sess:
             saver.restore(sess, checkpoint_path)
-            output = sess.run(self.output)
-            target_path = os.path.join(self.my_config['data_dir'], 'out',
-                                       'predict')
+        
+            input_coord = \
+                create_meshgrid_numpy(225, 225, -112, 112, -112, 112)
+            index = np.array([3], dtype='int32')
+
+            feed_dict = {self.input_coord: input_coord,
+                         self.index: index}
+
+            output = sess.run(self.output, feed_dict=feed_dict)
+            target_path = os.path.join(self.my_config['data_dir'],
+                                       'out', 'predict')
             write_images(output, target_path)

@@ -1,25 +1,24 @@
 import tensorflow as tf
 
 
-def ConvLayer(name, input, out_channels, ksize=1, stride=1,
+def ConvLayer(name, input, out_channels, in_channels=None,
+              ksize=1, stride=1,
               activation='relu',
               weight_init=tf.initializers.zeros(),
               bias_init=tf.initializers.zeros(),
               trainable=True,
-              no_shape=False):
-    in_channels = input.get_shape().as_list()[3]
+              modify_fn=None):
+    if in_channels is None:
+        in_channels = input.shape[-1]
     shape = [ksize, ksize, in_channels, out_channels]
 
     with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-        if no_shape:
-            w = tf.get_variable('weight',
-                                initializer=weight_init,
-                                trainable=trainable)
-        else:
-            w = tf.get_variable('weight',
-                                initializer=weight_init,
-                                shape=shape,
-                                trainable=trainable)
+        w = tf.get_variable('weight',
+                            initializer=weight_init,
+                            shape=shape,
+                            trainable=trainable)
+        if modify_fn is not None:
+            w = modify_fn(w)
         if bias_init is None:
             y = tf.nn.conv2d(input, w, strides=[1, stride, stride, 1],
                              padding='SAME')

@@ -4,7 +4,7 @@ import tensorflow as tf
 def GramLayer(activations, normalize_method=None):
     # Takes (batches, channels, height, width) and computes gramians of
     # dimension (batches, channels, channels)
-    activations_shape = activations.get_shape().as_list()
+    activations_shape = tf.cast(tf.shape(activations), tf.float32)
     """
     Instead of iterating over #channels width by height matrices and computing
     similarity, we vectorize and compute the entire gramian in a single matrix

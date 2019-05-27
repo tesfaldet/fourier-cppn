@@ -6,8 +6,7 @@ def ConvLayer(name, input, out_channels, in_channels=None,
               activation='relu',
               weight_init=tf.initializers.zeros(),
               bias_init=tf.initializers.zeros(),
-              trainable=True,
-              modify_fn=None):
+              trainable=True):
     if in_channels is None:
         in_channels = input.shape[-1]
     shape = [ksize, ksize, in_channels, out_channels]
@@ -17,8 +16,6 @@ def ConvLayer(name, input, out_channels, in_channels=None,
                             initializer=weight_init,
                             shape=shape,
                             trainable=trainable)
-        if modify_fn is not None:
-            w = modify_fn(w)
         if bias_init is None:
             y = tf.nn.conv2d(input, w, strides=[1, stride, stride, 1],
                              padding='SAME')

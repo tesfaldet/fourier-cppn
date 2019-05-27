@@ -45,7 +45,7 @@ class FourierCPPN:
                     tf.placeholder(tf.int32, shape=[None])
                 self.batch_size = tf.shape(self.input_coord)[0]
 
-            dataset_size = 4
+            dataset_size = 2
 
             # B x latent size
             self.latent_vector = \
@@ -139,10 +139,10 @@ class FourierCPPN:
                           out_channels=self.my_config['cppn_num_neurons'] * 2,
                           activation=None, trainable=trainable)
 
-            def phase_shift(weights, phase_shifts):
-                complex_weights = tf.dtypes.complex(
-                    weights[..., :self.fourier_basis_size],
-                    weights[..., self.fourier_basis_size:])
+            # def phase_shift(weights, phase_shifts):
+            #     complex_weights = tf.dtypes.complex(
+            #         weights[..., :self.fourier_basis_size],
+            #         weights[..., self.fourier_basis_size:])
 
             # The weights of these convs correspond to an image basis in
             # Fourier space. Each row corresponds to a frequency representation
@@ -161,15 +161,15 @@ class FourierCPPN:
             coeffs_r = \
                 ConvLayer('coefficients', colour_layer_r,
                           out_channels=self.fourier_basis_size * 2,
-                          activation=None, trainable=trainable)
+                          activation=None, bias_init=None, trainable=trainable)
             coeffs_g = \
                 ConvLayer('coefficients', colour_layer_g,
                           out_channels=self.fourier_basis_size * 2,
-                          activation=None, trainable=trainable)
+                          activation=None, bias_init=None, trainable=trainable)
             coeffs_b = \
                 ConvLayer('coefficients', colour_layer_b,
                           out_channels=self.fourier_basis_size * 2,
-                          activation=None, trainable=trainable)
+                          activation=None, bias_init=None, trainable=trainable)
 
             # Make Fourier coefficients complex B x H x W x (H_f x W_f)
             self.coeffs_r = tf.dtypes.complex(
@@ -232,33 +232,6 @@ class FourierCPPN:
                               tf.reduce_max(self.output_pre_sigmoid))
             tf.summary.scalar('RGB_pre_sigmoid_mean',
                               tf.reduce_mean(self.output_pre_sigmoid))
-
-            # Visualize basis textures
-            # name = 'fc' + str(self.my_config['cppn_num_layers'] + 1)
-            # with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-            #     basis_coeffs = tf.get_variable('weight')  # 1 x 1 x 24 x 200
-            #     # 1 x 1 x 24 x 100
-            #     basis_coeffs = tf.dtypes.complex(
-            #         basis_coeffs[..., :self.fourier_basis_size],
-            #         basis_coeffs[...,
-            #                      self.fourier_basis_size:
-            #                      self.fourier_basis_size*2])
-            #     # 1 x H_f x W_f x 2
-            #     input_coord = \
-            #         create_meshgrid(self.f_width, self.f_height,
-            #                         0, self.f_width - 1,
-            #                         0, self.f_height - 1,
-            #                         batch_size=tf.constant(1))
-            #     # 1 x H_f x W_f x 2
-            #     fourier_coord = self.fourier_coord[:1]
-            #     for i in range(self.my_config['cppn_num_neurons']):
-            #         coeffs = basis_coeffs[:, :, i, :]  # 1 x 1 x 100
-            #         coeffs = tf.expand_dims(coeffs, axis=0)  # 1 x 1 x 1 x 100
-            #         name = 'texture_' + str(i + 1)
-            #         # 1 x H_f x W_f x 1
-            #         image = IDFTLayer(name, input_coord, fourier_coord, coeffs)
-            #         image = tf.tile(image, [1, 10, 10, 1])
-            #         tf.summary.image(name, image)
 
             # Merge all summaries
             self.summaries = tf.summary.merge_all()

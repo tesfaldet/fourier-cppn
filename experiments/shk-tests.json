@@ -11,7 +11,7 @@
         "config": {
             "dimensions": {
                 "learning_rate": [5e-4],
-                "batch_size": [4],
+                "batch_size": [2],
                 "iterations": [100000],
                 "log_dir": ["/logs"],
                 "snap_dir": ["/snapshots"],

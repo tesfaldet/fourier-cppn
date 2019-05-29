@@ -37,13 +37,13 @@ class FourierCPPN:
                 self.input_coord = self.next_batch[0]  # B x H x W x 2
                 self.target = self.next_batch[1]  # B x H x W x 3
                 self.index = self.next_batch[2]  # B
-                self.batch_size = tf.shape(self.input_coord)[0]
             else:
                 self.input_coord = \
                     tf.placeholder(tf.float32, shape=[None, None, None, 2])
                 self.index = \
                     tf.placeholder(tf.int32, shape=[None])
-                self.batch_size = tf.shape(self.input_coord)[0]
+
+            self.batch_size = tf.shape(self.input_coord)[0]
 
             dataset_size = 2
 
@@ -121,6 +121,8 @@ class FourierCPPN:
 
             # Split activations into thirds, each corresponding to a colour
             # channel.
+            # B x H x W x (cppn_num_neurons x 3) ->
+            # B x H x W x cppn_num_neurons
             colour_layer = self.cppn_layers[-1][1]
             colour_layer_r = colour_layer[...,
                                           :self.my_config['cppn_num_neurons']]
@@ -131,28 +133,6 @@ class FourierCPPN:
                                           self.my_config['cppn_num_neurons']*2:
                                           self.my_config['cppn_num_neurons']*3]
 
-            # (dx, dy) phase shifts for each row of the weight matrix for the
-            # following conv layer.
-            # B x H x W x (cppn_num_neurons x 2)
-            phase_shifts = \
-                ConvLayer('phase_shifts', self.cppn_layers[-2][1],
-                          out_channels=self.my_config['cppn_num_neurons'] * 2,
-                          activation=None, trainable=trainable)
-
-            # def phase_shift(weights, phase_shifts):
-            #     complex_weights = tf.dtypes.complex(
-            #         weights[..., :self.fourier_basis_size],
-            #         weights[..., self.fourier_basis_size:])
-
-            # The weights of these convs correspond to an image basis in
-            # Fourier space. Each row corresponds to a frequency representation
-            # of an image, and each column is the mixin coefficient of a
-            # sinusoid at a specific frequency. Left to right indexes from low
-            # to high frequency.
-            #
-            # Each Fourier image (each row) will be phase shifted by its own
-            # (dx, dy) before being combined with activations.
-            #
             # The convs linearly combine the Fourier image basis with the
             # activations from the previous layer (split into R, G, and B) to
             # produce a single Fourier image for a colour channel, which

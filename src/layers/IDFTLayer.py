@@ -2,44 +2,44 @@ import tensorflow as tf
 import numpy as np
 
 
-def IDFTLayer(name, input_meshgrid, fourier_meshgrid, coefficients):
+def IDFTLayer(name, input_coord, fourier_coord, coefficients):
     with tf.name_scope(name):
-        input_shape = tf.shape(input_meshgrid)
+        input_shape = tf.shape(input_coord)
         batch_size = input_shape[0]
         input_width = input_shape[2]
         input_height = input_shape[1]
 
-        fourier_shape = tf.shape(fourier_meshgrid)
+        fourier_shape = tf.shape(fourier_coord)
         fourier_width = fourier_shape[2]
         fourier_height = fourier_shape[1]
 
-        # Reshape input meshgrid to B x (H x W) x 2
-        xy_meshgrid = tf.reshape(input_meshgrid,
-                                 [batch_size, input_width * input_height, 2])
+        # Reshape input coord to B x (H x W) x 2
+        xy_coord = tf.reshape(input_coord,
+                              [batch_size, input_width * input_height, 2])
 
-        # Reshape fourier meshgrid to B x (H_f x W_f) x 2
-        f_meshgrid = \
-            tf.reshape(fourier_meshgrid,
+        # Reshape fourier coord to B x (H_f x W_f) x 2
+        f_coord = \
+            tf.reshape(fourier_coord,
                        [batch_size, fourier_width * fourier_height, 2])
 
-        # Transpose fourier meshgrid to B x 2 x (H_f x W_f)
-        f_meshgrid_t = tf.transpose(f_meshgrid, [0, 2, 1])
+        # Transpose fourier coord to B x 2 x (H_f x W_f)
+        f_coord_t = tf.transpose(f_coord, [0, 2, 1])
 
-        # Normalize with fourier meshgrid width and height
+        # Normalize with fourier coord width and height
         norm = tf.to_float([[fourier_width], [fourier_height]])  # 2 x 1
         norm = tf.expand_dims(norm, axis=0)  # 1 x 2 x 1
-        f_meshgrid_t = f_meshgrid_t / norm
+        f_coord_t = f_coord_t / norm
 
-        # Matrix multiply input meshgrid with fourier meshgrid
+        # Matrix multiply input coord with fourier coord
         # B x (H x W) x (H_f x W_f)
-        xyf_meshgrid = tf.matmul(xy_meshgrid, f_meshgrid_t)
+        xyf_coord = tf.matmul(xy_coord, f_coord_t)
 
         # Reshape to B x H x W x (H_f x W_f)
-        xyf_meshgrid = tf.reshape(xyf_meshgrid,
-                                  [batch_size, input_height, input_width, -1])
+        xyf_coord = tf.reshape(xyf_coord,
+                               [batch_size, input_height, input_width, -1])
 
         # Fourier sinusoidal basis B x H x W x (H_f x W_f)
-        f_basis = tf.dtypes.complex(0., 2 * np.pi * xyf_meshgrid)
+        f_basis = tf.dtypes.complex(0., 2 * np.pi * xyf_coord)
         f_basis = tf.exp(f_basis)
 
         # Combine basis with fourier coefficients B x H x W x 1

@@ -11,7 +11,7 @@ class VGG19(object):
         self.full_name = prefix + '/' + self.name
 
         vgg_path = os.path.join(self.my_config['data_dir'], 'models',
-                                'vgg19_normalized_V1proto.tfmodel')
+                                'vgg19_normalized_valid_V1proto.tfmodel')
         with open(vgg_path, mode='rb') as f:
             file_content = f.read()
 

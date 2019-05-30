@@ -6,7 +6,7 @@ from src.Dataset import Dataset
 
 # USER SETTINGS
 my_config = {}
-my_config['batch_size'] = 1
+my_config['batch_size'] = 2
 my_config['learning_rate'] = 5e-4
 my_config['write_frequency'] = 100
 my_config['snapshot_frequency'] = 1000
@@ -17,7 +17,7 @@ my_config['log_dir'] = 'logs'
 my_config['snap_dir'] = 'snapshots'
 my_config['data_dir'] = 'data'
 my_config['dataset_dir'] = 'dataset'
-my_config['train'] = False
+my_config['train'] = True
 my_config['force_train_from_scratch'] = True
 my_config['use_bfgs'] = True
 my_config['run_id'] = 'test'

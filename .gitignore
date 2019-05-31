@@ -1,5 +1,6 @@
 # Image/video Data
 *.jpg
+*.jpeg
 *.png
 *.mov
 *.mp4

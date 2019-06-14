@@ -1,17 +1,22 @@
 import tensorflow as tf
 import numpy as np
 import os
+
+# Import layers
 from src.layers.ConvLayer import ConvLayer
 from src.layers.IDFTLayer import IDFTLayer
 from src.layers.EmbeddingLayer import EmbeddingLayer
+from src.layers.ApplyShiftsLayer import ApplyShiftsLayer
+from src.layers.CombineBasisLayer import CombineBasisLayer
+
+# Import utilities
 from src.utils.create_meshgrid import create_meshgrid
 from src.utils.create_meshgrid_numpy import create_meshgrid_numpy
 from src.utils.check_snapshots import check_snapshots
-from src.PerceptualLoss import PerceptualLoss
-from src.utils.load_image import load_image
 from src.utils.write_images import write_images
-from src.InceptionV1 import InceptionV1
-from src.layers.MSELayer import MSELayer
+
+# Some losses
+from src.PerceptualLoss import PerceptualLoss
 
 
 class FourierCPPN:
@@ -45,7 +50,7 @@ class FourierCPPN:
 
             self.batch_size = tf.shape(self.input_coord)[0]
 
-            dataset_size = 2
+            dataset_size = 1
 
             # B x latent size
             self.latent_vector = \
@@ -109,13 +114,15 @@ class FourierCPPN:
                     tf.initializers \
                       .random_normal(0, tf.sqrt(1.0 / prev_num_channels))
                 out_channels = self.my_config['cppn_num_neurons']
+                activation = self.my_config['cppn_activation']
                 if (i + 1) == self.my_config['cppn_num_layers']:
                     out_channels *= 3  # for RGB
+                    activation = 'atan'
                 layer = \
                     ConvLayer(layer_name, prev_layer,
                               out_channels=out_channels,
                               weight_init=weight_init,
-                              activation=self.my_config['cppn_activation'],
+                              activation=activation,
                               trainable=trainable)
                 self.cppn_layers.append((layer_name, layer))
 
@@ -123,15 +130,18 @@ class FourierCPPN:
             # channel.
             # B x H x W x (cppn_num_neurons x 3) ->
             # B x H x W x cppn_num_neurons
-            colour_layer = self.cppn_layers[-1][1]
-            colour_layer_r = colour_layer[...,
-                                          :self.my_config['cppn_num_neurons']]
-            colour_layer_g = colour_layer[...,
-                                          self.my_config['cppn_num_neurons']:
-                                          self.my_config['cppn_num_neurons']*2]
-            colour_layer_b = colour_layer[...,
-                                          self.my_config['cppn_num_neurons']*2:
-                                          self.my_config['cppn_num_neurons']*3]
+            colour_layer = self.cppn_layers[-1][1] / 0.67
+            colour_layer_r = \
+                colour_layer[...,
+                             :self.my_config['cppn_num_neurons']]
+            colour_layer_g = \
+                colour_layer[...,
+                             self.my_config['cppn_num_neurons']:
+                             self.my_config['cppn_num_neurons']*2]
+            colour_layer_b = \
+                colour_layer[...,
+                             self.my_config['cppn_num_neurons']*2:
+                             self.my_config['cppn_num_neurons']*3]
 
             # The weights correspond to an image basis in
             # Fourier space. Each row corresponds to a frequency representation
@@ -144,115 +154,39 @@ class FourierCPPN:
             with tf.variable_scope('coefficients', reuse=tf.AUTO_REUSE):
                 shape = [self.my_config['cppn_num_neurons'],
                          self.fourier_basis_size * 2]
+                weight_init = tf.initializers.truncated_normal()
                 # cppn_num_neurons x fourier_basis_size
-                image_basis = \
+                self.image_basis = \
                     tf.get_variable('weight',
-                                    initializer=tf.initializers.zeros(),
+                                    initializer=weight_init,
                                     shape=shape,
                                     trainable=trainable)
-                complex_image_basis = \
+                self.complex_image_basis = \
                     tf.dtypes.complex(
-                        image_basis[:, :self.fourier_basis_size],
-                        image_basis[:, self.fourier_basis_size:])
+                        self.image_basis[:, :self.fourier_basis_size],
+                        self.image_basis[:, self.fourier_basis_size:])
 
             # (dx, dy) shifts for each row of the Fourier image basis and
             # each pixel position
             # B x H x W x (cppn_num_neurons x 2)
-            shifts = \
+            weight_init = tf.initializers.truncated_normal()
+            self.shifts = \
                 ConvLayer('shifts', self.cppn_layers[-2][1],
                           out_channels=self.my_config['cppn_num_neurons'] * 2,
-                          activation=None, trainable=trainable)
+                          activation=None, trainable=trainable,
+                          weight_init=weight_init)
 
-            # B x (H x W) x cppn_num_neurons x 2
-            shifts = \
-                tf.reshape(shifts,
-                           [self.batch_size, input_height * input_width,
-                            self.my_config['cppn_num_neurons'], 2])
+            # (B x H x W) x cppn_num_neurons x (fourier_basis_size x 2)
+            shifted_image_basis = \
+                ApplyShiftsLayer('shift', self.shifts,
+                                 self.complex_image_basis,
+                                 self.fourier_coord)
 
-            # B x cppn_num_neurons x (H x W) x 2
-            shifts = \
-                tf.transpose(shifts, [0, 2, 1, 3])
-
-            # B x H_f x W_f x 2 -> B x (H_f x W_f) x 2
-            f_coord = \
-                tf.reshape(self.fourier_coord,
-                           [self.batch_size, self.fourier_basis_size, 2])
-
-            # B x 2 x (H_f x W_f)
-            f_coord = tf.transpose(f_coord, [0, 2, 1])
-
-            # B x 1 x 2 x (H_f x W_f)
-            f_coord = tf.expand_dims(f_coord, 1)
-
-            # B x cppn_num_neurons x 2 x (H_f x W_f)
-            f_coord = \
-                tf.tile(f_coord,
-                        [1, self.my_config['cppn_num_neurons'], 1, 1])
-
-            # Matrix multiply shifts with fourier coord
-            # B x cppn_num_neurons x (H x W) x (H_f x W_f)
-            shifted_f_coord = tf.matmul(shifts, f_coord)
-
-            # Fourier shift
-            # (https://en.wikipedia.org/wiki/Multidimensional_transform#Shift)
-            # B x cppn_num_neurons x (H x W) x (H_f x W_f)
-            f_shift = tf.dtypes.complex(0., -shifted_f_coord)
-            f_shift = tf.exp(f_shift)
-
-            # Reshape to B x cppn_num_neurons x H x W x (H_f x W_f)
-            f_shift = \
-                tf.reshape(f_shift,
-                           [self.batch_size,
-                            self.my_config['cppn_num_neurons'], input_height,
-                            input_width, self.fourier_basis_size])
-
-            # B x H x W x cppn_num_neurons x fourier_basis_size
-            f_shift = tf.transpose(f_shift, [0, 2, 3, 1, 4])
-
-            # 1 x 1 x 1 x cppn_num_neurons x fourier_basis_size
-            complex_image_basis = \
-                tf.reshape(complex_image_basis,
-                           [1, 1, 1, self.my_config['cppn_num_neurons'],
-                            self.fourier_basis_size])
-
-            # B x H x W x cppn_num_neurons x fourier_basis_size
-            shifted_complex_image_basis = f_shift * complex_image_basis
-
-            # Make real
-            # B x H x W x cppn_num_neurons x (fourier_basis_size x 2)
-            shifted_complex_image_basis = \
-                tf.concat([tf.real(shifted_complex_image_basis),
-                           tf.imag(shifted_complex_image_basis)], -1)
-
-            # B x H x W x 1 x cppn_num_neurons
-            colour_layer_r = tf.expand_dims(colour_layer_r, axis=3)
-            colour_layer_g = tf.expand_dims(colour_layer_g, axis=3)
-            colour_layer_b = tf.expand_dims(colour_layer_b, axis=3)
-
-            # B x H x W x 1 x (fourier_basis_size x 2)
-            coeffs_r = tf.matmul(colour_layer_r, shifted_complex_image_basis)
-            coeffs_g = tf.matmul(colour_layer_g, shifted_complex_image_basis)
-            coeffs_b = tf.matmul(colour_layer_b, shifted_complex_image_basis)
-
-            # B x H x W x (fourier_basis_size x 2)
-            coeffs_r = tf.squeeze(coeffs_r)
-            coeffs_g = tf.squeeze(coeffs_g)
-            coeffs_b = tf.squeeze(coeffs_b)
-
-            # Make complex
             # B x H x W x fourier_basis_size
-            self.coeffs_r = \
-                tf.dtypes.complex(
-                    coeffs_r[..., :self.fourier_basis_size],
-                    coeffs_r[..., self.fourier_basis_size:])
-            self.coeffs_g = \
-                tf.dtypes.complex(
-                    coeffs_g[..., :self.fourier_basis_size],
-                    coeffs_g[..., self.fourier_basis_size:])
-            self.coeffs_b = \
-                tf.dtypes.complex(
-                    coeffs_b[..., :self.fourier_basis_size],
-                    coeffs_b[..., self.fourier_basis_size:])
+            self.coeffs_r, self.coeffs_g, self.coeffs_b = \
+                CombineBasisLayer('combine_basis', colour_layer_r,
+                                  colour_layer_g, colour_layer_b,
+                                  shifted_image_basis)
 
         with tf.name_scope('IDFT'):
             # Each output is B x H x W x 1
@@ -265,18 +199,16 @@ class FourierCPPN:
 
         with tf.name_scope('Output'):
             # Construct RGB output B x H x W x 3
-            self.output_pre_sigmoid = tf.concat([self.output_r,
-                                                 self.output_g,
-                                                 self.output_b], axis=-1)
-
-            self.output = tf.sigmoid(self.output_pre_sigmoid)
+            self.output = tf.sigmoid(tf.concat([self.output_r,
+                                                self.output_g,
+                                                self.output_b], axis=-1))
 
         # OBJECTIVE
         if self.my_config['train']:
             self.loss = 1e5 * \
                 PerceptualLoss(self.my_config, self.output, self.target,
                                style_layers=self.my_config['style_layers']
-                                                .split(',')).style_loss
+                                                .split(',')).content_loss
 
             # Average loss over batch
             self.loss = self.loss / tf.cast(self.batch_size, tf.float32)
@@ -288,22 +220,11 @@ class FourierCPPN:
             # Output and Target
             tf.summary.image('Output', tf.cast(self.output * 255.0, tf.uint8),
                              max_outputs=2)
-            tf.summary.image('Target', self.target,
+            tf.summary.image('Target', tf.cast(self.target * 255.0, tf.uint8),
                              max_outputs=2)
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)
-
-            tf.summary.scalar('RGB_min', tf.reduce_min(self.output))
-            tf.summary.scalar('RGB_max', tf.reduce_max(self.output))
-            tf.summary.scalar('RGB_mean', tf.reduce_mean(self.output))
-
-            tf.summary.scalar('RGB_pre_sigmoid_min',
-                              tf.reduce_min(self.output_pre_sigmoid))
-            tf.summary.scalar('RGB_pre_sigmoid_max',
-                              tf.reduce_max(self.output_pre_sigmoid))
-            tf.summary.scalar('RGB_pre_sigmoid_mean',
-                              tf.reduce_mean(self.output_pre_sigmoid))
 
             # Merge all summaries
             self.summaries = tf.summary.merge_all()

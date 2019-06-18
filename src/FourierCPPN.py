@@ -58,6 +58,7 @@ class FourierCPPN:
                                self.my_config['cppn_latent_size'],
                                dataset_size,
                                trainable=trainable)
+
             # B x 1 x 1 x latent size
             self.latent_vector = \
                 tf.reshape(self.latent_vector,
@@ -154,7 +155,7 @@ class FourierCPPN:
             with tf.variable_scope('coefficients', reuse=tf.AUTO_REUSE):
                 shape = [self.my_config['cppn_num_neurons'],
                          self.fourier_basis_size * 2]
-                weight_init = tf.initializers.truncated_normal()
+                weight_init = tf.initializers.zeros()
                 # cppn_num_neurons x fourier_basis_size
                 self.image_basis = \
                     tf.get_variable('weight',
@@ -345,9 +346,9 @@ class FourierCPPN:
             saver.restore(sess, checkpoint_path)
         
             input_coord = \
-                create_meshgrid_numpy(225, 225, -112, 112, -112, 112)
-            index = np.array([3], dtype='int32')
-
+                create_meshgrid_numpy(1000, 1000, -200, 200, -200, 200)
+            
+            index = np.array([0], dtype='int32')
             feed_dict = {self.input_coord: input_coord,
                          self.index: index}
 

@@ -22,11 +22,11 @@ my_config['force_train_from_scratch'] = True
 my_config['use_bfgs'] = True
 my_config['run_id'] = 'test'
 
-my_config['cppn_input_dimensions'] = '100,100'
-my_config['cppn_input_coordinate_range'] = '-50,49'
-my_config['cppn_coord_scale_factor'] = '(3**0.5)/50'
+my_config['cppn_input_dimensions'] = '225,225'
+my_config['cppn_input_coordinate_range'] = '-112,112'
+my_config['cppn_coord_scale_factor'] = '(3**0.5)/112'
 my_config['cppn_num_layers'] = 8
-my_config['cppn_num_neurons'] = 1
+my_config['cppn_num_neurons'] = 24
 my_config['cppn_activation'] = 'atan_concat'
 my_config['cppn_latent_size'] = 10
 my_config['style_layers'] = 'conv1_1/Relu,pool1,pool2,pool3,pool4'
@@ -49,7 +49,7 @@ cppn = FourierCPPN(dataset=dataset,
 
 if not my_config['train']:
     # PREDICT
-    cppn.predict(os.path.join(my_config['snap_dir'], '697456'))
+    cppn.predict(os.path.join(my_config['snap_dir'], '742685'))
 else:
     # TRAIN
     cppn.train()

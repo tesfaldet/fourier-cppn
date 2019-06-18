@@ -18,7 +18,7 @@ parser.add_argument('-i', '--iterations', default=100000, type=int)
 parser.add_argument('-lr', '--learning_rate', default=5e-4, type=float)
 parser.add_argument('-logf', '--log_frequency', default=10, type=int)
 parser.add_argument('-printf', '--print_frequency', default=10, type=int)
-parser.add_argument('-snapf', '--snapshot_frequency', default=1000, type=int)
+parser.add_argument('-snapf', '--snapshot_frequency', default=2000, type=int)
 parser.add_argument('-writef', '--write_frequency', default=100, type=int)
 parser.add_argument('-log_dir', '--log_dir', default='logs', type=str)
 parser.add_argument('-snap_dir', '--snapshot_dir',
@@ -30,7 +30,7 @@ parser.add_argument('-id', '--run_id', default=time.strftime('%d%b-%X'),
                     type=str)
 parser.add_argument('-train', '--train', default=True, type=bool)
 parser.add_argument('-rgb_cppn', '--rgb_cppn', default=False, type=bool)
-parser.add_argument('-bfgs', '--use_bfgs', default=True, type=bool)
+parser.add_argument('-bfgs', '--use_bfgs', default=False, type=bool)
 
 # Meant for training on Borgy when there's an existing snapshot and it needs
 # to be overridden, disregarding user input since it can't accept any
@@ -79,7 +79,7 @@ else:
 
 if not args.train:
     # PREDICT
-    cppn.predict(os.path.join(my_config['snap_dir'], '653520'))
+    cppn.predict(os.path.join(my_config['snap_dir'], '742685'))
 else:
     # NOTE KEEPING
     notes_path = os.path.join(my_config['log_dir'], str(trial_id) + '.txt')

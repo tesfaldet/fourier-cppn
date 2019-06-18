@@ -16,17 +16,17 @@
                 "log_dir": ["/logs"],
                 "snap_dir": ["/snapshots"],
                 "data_dir": ["/data"],
-                "cppn_input_dimensions": ["100,100"],
-                "cppn_input_coordinate_range": ["-50,49"],
-                "cppn_coord_scale_factor": ["(3**0.5)/50"],
+                "cppn_input_dimensions": ["225,225"],
+                "cppn_input_coordinate_range": ["-112,112"],
+                "cppn_coord_scale_factor": ["(3**0.5)/112"],
                 "cppn_num_layers": [8],
-                "cppn_num_neurons": [1],
+                "cppn_num_neurons": [24],
                 "cppn_activation": ["atan_concat"],
                 "cppn_latent_size": [10],
                 "style_layers": ["conv1_1/Relu,pool1,pool2,pool3,pool4"],
                 "content_layers": ["conv1_1/Relu,pool1,pool2,pool3,pool4"],
                 "cppn_fourier_dimensions": ["10,10"],
-                "cppn_fourier_coordinate_range": ["0,9"]
+                "cppn_fourier_coordinate_range": ["-5,4"]
             }
         }
     }

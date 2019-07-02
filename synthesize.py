@@ -30,7 +30,7 @@ parser.add_argument('-id', '--run_id', default=time.strftime('%d%b-%X'),
                     type=str)
 parser.add_argument('-train', '--train', default=True, type=bool)
 parser.add_argument('-rgb_cppn', '--rgb_cppn', default=False, type=bool)
-parser.add_argument('-bfgs', '--use_bfgs', default=False, type=bool)
+parser.add_argument('-bfgs', '--use_bfgs', default=True, type=bool)
 
 # Meant for training on Borgy when there's an existing snapshot and it needs
 # to be overridden, disregarding user input since it can't accept any

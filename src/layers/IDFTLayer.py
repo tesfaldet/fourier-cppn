@@ -48,7 +48,7 @@ def IDFTLayer(name, input_coord, fourier_coord, coefficients):
 
         # Normalize and take real part
         output = \
-            tf.real(output) / tf.sqrt(tf.cast(fourier_width *
-                                              fourier_height, tf.float32))
+            tf.real(output) / \
+            tf.sqrt(tf.cast(fourier_width * fourier_height, tf.float32))
 
         return output

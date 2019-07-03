@@ -5,7 +5,6 @@ import os
 # Import layers
 from src.layers.ConvLayer import ConvLayer
 from src.layers.IDFTLayer import IDFTLayer
-from src.layers.EmbeddingLayer import EmbeddingLayer
 from src.layers.ApplyShiftsLayer import ApplyShiftsLayer
 from src.layers.CombineBasisLayer import CombineBasisLayer
 
@@ -50,14 +49,8 @@ class FourierCPPN:
 
             self.batch_size = tf.shape(self.input_coord)[0]
 
-            dataset_size = 1
-
             # B x latent size
-            self.latent_vector = \
-                EmbeddingLayer('em1', self.index,
-                               self.my_config['cppn_latent_size'],
-                               dataset_size,
-                               trainable=trainable)
+            self.latent_vector = tf.one_hot(self.index, depth=2)
 
             # B x 1 x 1 x latent size
             self.latent_vector = \

@@ -5,8 +5,6 @@ import os
 # Import layers
 from src.layers.ConvLayer import ConvLayer
 from src.layers.IDFTLayer import IDFTLayer
-from src.layers.ApplyShiftsLayer import ApplyShiftsLayer
-from src.layers.CombineBasisLayer import CombineBasisLayer
 
 # Import utilities
 from src.utils.create_meshgrid import create_meshgrid
@@ -137,50 +135,27 @@ class FourierCPPN:
                              self.my_config['cppn_num_neurons']*2:
                              self.my_config['cppn_num_neurons']*3]
 
-            # The weights correspond to an image basis in
-            # Fourier space. Each row corresponds to a frequency representation
-            # of an image, and each column is the mixin coefficient of a
-            # sinusoid at a specific frequency. Left to right indexes from low
-            # to high frequency.
-            #
-            # Each Fourier image (each row) will be shifted by its own
-            # (dx, dy) before being combined with activations.
-            with tf.variable_scope('coefficients', reuse=tf.AUTO_REUSE):
-                shape = [self.my_config['cppn_num_neurons'],
-                         self.fourier_basis_size * 2]
-                weight_init = tf.initializers.zeros()
-                # cppn_num_neurons x fourier_basis_size
-                self.image_basis = \
-                    tf.get_variable('weight',
-                                    initializer=weight_init,
-                                    shape=shape,
-                                    trainable=trainable)
-                self.complex_image_basis = \
-                    tf.dtypes.complex(
-                        self.image_basis[:, :self.fourier_basis_size],
-                        self.image_basis[:, self.fourier_basis_size:])
-
-            # (dx, dy) shifts for each row of the Fourier image basis and
-            # each pixel position
-            # B x H x W x (cppn_num_neurons x 2)
-            weight_init = tf.initializers.truncated_normal()
-            self.shifts = \
-                ConvLayer('shifts', self.cppn_layers[-2][1],
-                          out_channels=self.my_config['cppn_num_neurons'] * 2,
-                          activation=None, trainable=trainable,
-                          weight_init=weight_init)
-
-            # (B x H x W) x cppn_num_neurons x (fourier_basis_size x 2)
-            shifted_image_basis = \
-                ApplyShiftsLayer('shift', self.shifts,
-                                 self.complex_image_basis,
-                                 self.fourier_coord)
-
+            # B x H x W x (fourier_basis_size x 2)
+            self.coeffs_r = ConvLayer('coefficients', colour_layer_r,
+                                      self.fourier_basis_size * 2,
+                                      activation=None)
+            self.coeffs_g = ConvLayer('coefficients', colour_layer_g,
+                                      self.fourier_basis_size * 2,
+                                      activation=None)
+            self.coeffs_b = ConvLayer('coefficients', colour_layer_b,
+                                      self.fourier_basis_size * 2,
+                                      activation=None)
+            
             # B x H x W x fourier_basis_size
-            self.coeffs_r, self.coeffs_g, self.coeffs_b = \
-                CombineBasisLayer('combine_basis', colour_layer_r,
-                                  colour_layer_g, colour_layer_b,
-                                  shifted_image_basis)
+            self.coeffs_r = tf.dtypes.complex(
+                self.coeffs_r[..., :self.fourier_basis_size],
+                self.coeffs_r[..., self.fourier_basis_size:])
+            self.coeffs_g = tf.dtypes.complex(
+                self.coeffs_g[..., :self.fourier_basis_size],
+                self.coeffs_g[..., self.fourier_basis_size:])
+            self.coeffs_b = tf.dtypes.complex(
+                self.coeffs_b[..., :self.fourier_basis_size],
+                self.coeffs_b[..., self.fourier_basis_size:])
 
         with tf.name_scope('IDFT'):
             # Each output is B x H x W x 1

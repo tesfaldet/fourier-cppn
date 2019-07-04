@@ -28,7 +28,7 @@ parser.add_argument('-dataset_dir', '--dataset_dir', default='dataset',
                     type=str)
 parser.add_argument('-id', '--run_id', default=time.strftime('%d%b-%X'),
                     type=str)
-parser.add_argument('-train', '--train', default=True, type=bool)
+parser.add_argument('-train', '--train', default=False, type=bool)
 parser.add_argument('-rgb_cppn', '--rgb_cppn', default=False, type=bool)
 parser.add_argument('-bfgs', '--use_bfgs', default=True, type=bool)
 
@@ -79,7 +79,7 @@ else:
 
 if not args.train:
     # PREDICT
-    cppn.predict(os.path.join(my_config['snap_dir'], '742685'))
+    cppn.predict(os.path.join(my_config['snap_dir'], '748365'))
 else:
     # NOTE KEEPING
     notes_path = os.path.join(my_config['log_dir'], str(trial_id) + '.txt')

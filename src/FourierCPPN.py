@@ -42,17 +42,19 @@ class FourierCPPN:
             else:
                 self.input_coord = \
                     tf.placeholder(tf.float32, shape=[None, None, None, 2])
-                self.index = \
-                    tf.placeholder(tf.int32, shape=[None])
+                # self.index = \
+                #     tf.placeholder(tf.int32, shape=[None])
+                self.latent_vector_feed = \
+                    tf.placeholder(tf.float32, shape=[None, None])
 
             self.batch_size = tf.shape(self.input_coord)[0]
 
             # B x latent size
-            self.latent_vector = tf.one_hot(self.index, depth=2)
+            # self.latent_vector = tf.one_hot(self.index, depth=2)
 
             # B x 1 x 1 x latent size
             self.latent_vector = \
-                tf.reshape(self.latent_vector,
+                tf.reshape(self.latent_vector_feed,
                            [self.batch_size, 1, 1,
                             self.my_config['cppn_latent_size']])
             input_height = tf.shape(self.input_coord)[1]
@@ -314,13 +316,17 @@ class FourierCPPN:
             saver.restore(sess, checkpoint_path)
         
             input_coord = \
-                create_meshgrid_numpy(1000, 1000, -200, 200, -200, 200)
+                create_meshgrid_numpy(2000, 2000, -112, 112, -112, 112)
             
-            index = np.array([0], dtype='int32')
-            feed_dict = {self.input_coord: input_coord,
-                         self.index: index}
+            i = 0
+            for theta in np.linspace(0, 2 * np.pi, 1620):
+                latent_vector = np.array([[np.cos(theta), np.sin(theta)]],
+                                         dtype='float32')
+                feed_dict = {self.input_coord: input_coord,
+                             self.latent_vector_feed: latent_vector}
 
-            output = sess.run(self.output, feed_dict=feed_dict)
-            target_path = os.path.join(self.my_config['data_dir'],
-                                       'out', 'predict')
-            write_images(output, target_path)
+                output = sess.run(self.output, feed_dict=feed_dict)
+                target_path = os.path.join(self.my_config['data_dir'],
+                                           'out', 'predict')
+                write_images(output, target_path, training_iteration=i)
+                i += 1

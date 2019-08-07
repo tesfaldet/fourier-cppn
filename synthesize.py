@@ -66,13 +66,17 @@ tf_config = tf.ConfigProto()
 tf_config.gpu_options.allow_growth = True
 tf_config.allow_soft_placement = True
 
+# DATASET SETUP
+dataset_path = os.path.join(my_config['data_dir'],
+                            my_config['dataset_dir'])
+dataset = Dataset(training_path=dataset_path, config=my_config)
+
 # BUILD GRAPH
 if args.cppn:
-    cppn = CPPN(tf_config=tf_config, my_config=my_config)
+    cppn = CPPN(dataset=dataset,
+                tf_config=tf_config,
+                my_config=my_config)
 else:
-    dataset_path = os.path.join(my_config['data_dir'],
-                                my_config['dataset_dir'])
-    dataset = Dataset(training_path=dataset_path, config=my_config)
     cppn = FourierCPPN(dataset=dataset,
                        tf_config=tf_config,
                        my_config=my_config)

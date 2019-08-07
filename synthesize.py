@@ -3,7 +3,7 @@ import time
 import argparse
 import tensorflow as tf
 from src.FourierCPPN import FourierCPPN
-from src.RGBCPPN import RGBCPPN
+from src.CPPN import CPPN
 from src.Dataset import Dataset
 
 # SHURIKEN IMPORTS
@@ -28,8 +28,8 @@ parser.add_argument('-dataset_dir', '--dataset_dir', default='dataset',
                     type=str)
 parser.add_argument('-id', '--run_id', default=time.strftime('%d%b-%X'),
                     type=str)
-parser.add_argument('-train', '--train', default=False, type=bool)
-parser.add_argument('-rgb_cppn', '--rgb_cppn', default=False, type=bool)
+parser.add_argument('-train', '--train', default=True, type=bool)
+parser.add_argument('-cppn', '--use_cppn', default=False, type=bool)
 parser.add_argument('-bfgs', '--use_bfgs', default=True, type=bool)
 
 # Meant for training on Borgy when there's an existing snapshot and it needs
@@ -67,8 +67,8 @@ tf_config.gpu_options.allow_growth = True
 tf_config.allow_soft_placement = True
 
 # BUILD GRAPH
-if args.rgb_cppn:
-    cppn = RGBCPPN(tf_config=tf_config, my_config=my_config)
+if args.cppn:
+    cppn = CPPN(tf_config=tf_config, my_config=my_config)
 else:
     dataset_path = os.path.join(my_config['data_dir'],
                                 my_config['dataset_dir'])

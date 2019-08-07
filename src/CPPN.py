@@ -4,10 +4,8 @@ import os
 
 # Import layers
 from src.layers.ConvLayer import ConvLayer
-from src.layers.IDFTLayer import IDFTLayer
 
 # Import utilities
-from src.utils.create_meshgrid import create_meshgrid
 from src.utils.create_meshgrid_numpy import create_meshgrid_numpy
 from src.utils.check_snapshots import check_snapshots
 from src.utils.write_images import write_images
@@ -16,7 +14,7 @@ from src.utils.write_images import write_images
 from src.PerceptualLoss import PerceptualLoss
 
 
-class FourierCPPN:
+class CPPN:
     def __init__(self,
                  dataset,
                  my_config,
@@ -25,7 +23,7 @@ class FourierCPPN:
         self.tf_config = tf_config
         self.my_config = my_config
         self.build_graph()
-        print('Fourier CPPN Num Variables: ',
+        print('CPPN Num Variables: ',
               np.sum([np.product([xi.value for xi in x.get_shape()])
                       for x in tf.global_variables()]))
 
@@ -77,24 +75,6 @@ class FourierCPPN:
             self.input.set_shape([None, None, None,
                                   2 + self.my_config['cppn_latent_size']])
 
-        with tf.name_scope('Fourier_Coordinates'):
-            self.f_dimensions = \
-                self.my_config['cppn_fourier_dimensions'].split(',')
-            self.f_width = int(self.f_dimensions[0])
-            self.f_height = int(self.f_dimensions[1])
-            self.fourier_coord_range = \
-                self.my_config['cppn_fourier_coordinate_range'].split(',')
-            self.fourier_coord_min = eval(self.fourier_coord_range[0])
-            self.fourier_coord_max = eval(self.fourier_coord_range[1])
-            self.fourier_basis_size = self.f_width * self.f_height
-
-            # B x H_f x W_f x 2
-            self.fourier_coord = \
-                create_meshgrid(self.f_width, self.f_height,
-                                self.fourier_coord_min, self.fourier_coord_max,
-                                self.fourier_coord_min, self.fourier_coord_max,
-                                batch_size=self.batch_size)
-
         # CPPN OUTPUT
         with tf.name_scope('CPPN'):
             self.cppn_layers = [('input', self.input)]
@@ -108,9 +88,6 @@ class FourierCPPN:
                       .random_normal(0, tf.sqrt(1.0 / prev_num_channels))
                 out_channels = self.my_config['cppn_num_neurons']
                 activation = self.my_config['cppn_activation']
-                if (i + 1) == self.my_config['cppn_num_layers']:
-                    out_channels *= 3  # for RGB
-                    activation = 'atan'
                 layer = \
                     ConvLayer(layer_name, prev_layer,
                               out_channels=out_channels,
@@ -119,59 +96,10 @@ class FourierCPPN:
                               trainable=trainable)
                 self.cppn_layers.append((layer_name, layer))
 
-            # Split activations into thirds, each corresponding to a colour
-            # channel.
-            # B x H x W x (cppn_num_neurons x 3) ->
-            # B x H x W x cppn_num_neurons
-            colour_layer = self.cppn_layers[-1][1] / 0.67
-            colour_layer_r = \
-                colour_layer[...,
-                             :self.my_config['cppn_num_neurons']]
-            colour_layer_g = \
-                colour_layer[...,
-                             self.my_config['cppn_num_neurons']:
-                             self.my_config['cppn_num_neurons']*2]
-            colour_layer_b = \
-                colour_layer[...,
-                             self.my_config['cppn_num_neurons']*2:
-                             self.my_config['cppn_num_neurons']*3]
-
-            # B x H x W x (fourier_basis_size x 2)
-            self.coeffs_r = ConvLayer('coefficients', colour_layer_r,
-                                      self.fourier_basis_size * 2,
-                                      activation=None)
-            self.coeffs_g = ConvLayer('coefficients', colour_layer_g,
-                                      self.fourier_basis_size * 2,
-                                      activation=None)
-            self.coeffs_b = ConvLayer('coefficients', colour_layer_b,
-                                      self.fourier_basis_size * 2,
-                                      activation=None)
-            
-            # B x H x W x fourier_basis_size
-            self.coeffs_r = tf.dtypes.complex(
-                self.coeffs_r[..., :self.fourier_basis_size],
-                self.coeffs_r[..., self.fourier_basis_size:])
-            self.coeffs_g = tf.dtypes.complex(
-                self.coeffs_g[..., :self.fourier_basis_size],
-                self.coeffs_g[..., self.fourier_basis_size:])
-            self.coeffs_b = tf.dtypes.complex(
-                self.coeffs_b[..., :self.fourier_basis_size],
-                self.coeffs_b[..., self.fourier_basis_size:])
-
-        with tf.name_scope('IDFT'):
-            # Each output is B x H x W x 1
-            self.output_r = IDFTLayer('output_r', self.input_coord,
-                                      self.fourier_coord, self.coeffs_r)
-            self.output_g = IDFTLayer('output_g', self.input_coord,
-                                      self.fourier_coord, self.coeffs_g)
-            self.output_b = IDFTLayer('output_b', self.input_coord,
-                                      self.fourier_coord, self.coeffs_b)
-
         with tf.name_scope('Output'):
             # Construct RGB output B x H x W x 3
-            self.output = tf.sigmoid(tf.concat([self.output_r,
-                                                self.output_g,
-                                                self.output_b], axis=-1))
+            self.output = ConvLayer('rgb', self.cppn_layers[-1][1],
+                                    3, activation='sigmoid')
 
         # OBJECTIVE
         if self.my_config['train']:

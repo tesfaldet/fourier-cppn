@@ -11,12 +11,12 @@
         "config": {
             "dimensions": {
                 "learning_rate": [5e-4],
-                "batch_size": [2],
+                "batch_size": [1],
                 "iterations": [100000],
                 "log_dir": ["/logs"],
                 "snap_dir": ["/snapshots"],
                 "data_dir": ["/data"],
-                "cppn_input_dimensions": ["401,401"],
+                "cppn_input_dimensions": ["225,225"],
                 "cppn_input_coordinate_range": ["-112,112"],
                 "cppn_coord_scale_factor": ["(3**0.5)/112"],
                 "cppn_num_layers": [8],

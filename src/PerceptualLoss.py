@@ -8,10 +8,11 @@ from src.utils.vgg import vgg_process
 class PerceptualLoss(object):
 
     # predicted and target are RGB [0, 1]
-    def __init__(self, my_config, predicted, target,
+    def __init__(self, name, my_config, predicted, target,
                  style_layers=['conv1_1/Relu', 'pool1', 'pool2',
                                'pool3', 'pool4'],
-                 content_layers=['conv1_1/Relu']):
+                 content_layers=['conv4_2/Relu']):
+        self.name = name
         self.my_config = my_config
         self.predicted = predicted
         self.target = target
@@ -23,14 +24,12 @@ class PerceptualLoss(object):
                       for x in tf.all_variables()]))
 
     def build_graph(self):
-        with tf.name_scope('PerceptualLoss'):
+        with tf.name_scope(self.name):
             # VGG accepts BGR [0-mean, 255-mean] mean subtracted
             vgg19_predicted = VGG19(self.my_config, 'VGG19_predicted',
-                                    'PerceptualLoss',
-                                    vgg_process(self.predicted))
+                                    self.name, vgg_process(self.predicted))
             vgg19_target = VGG19(self.my_config, 'VGG19_target',
-                                 'PerceptualLoss',
-                                 vgg_process(self.target))
+                                 self.name, vgg_process(self.target))
 
             self.style_loss = self._style_loss(vgg19_predicted,
                                                vgg19_target,
@@ -48,7 +47,7 @@ class PerceptualLoss(object):
                 losses.append(loss)
             # return average style loss across layers
             avg_style_loss = tf.add_n(losses) / tf.to_float(len(style_layers))
-            return avg_style_loss   
+            return avg_style_loss
 
     def _content_loss(self, vgg_predicted, vgg_target, content_layers):
         with tf.name_scope('ContentLoss'):

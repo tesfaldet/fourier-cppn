@@ -16,6 +16,7 @@
                 "log_dir": ["/logs"],
                 "snap_dir": ["/snapshots"],
                 "data_dir": ["/data"],
+                "dataset_dir": ["dataset"],
                 "cppn_input_dimensions": ["225,225"],
                 "cppn_input_coordinate_range": ["-112,112"],
                 "cppn_coord_scale_factor": ["(3**0.5)/112"],

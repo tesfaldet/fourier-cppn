@@ -42,8 +42,6 @@ class CPPN:
             else:
                 self.input_coord = \
                     tf.placeholder(tf.float32, shape=[None, None, None, 2])
-                # self.index = \
-                #     tf.placeholder(tf.int32, shape=[None])
                 self.latent_vector_feed = \
                     tf.placeholder(tf.float32, shape=[None, None])
 
@@ -103,13 +101,21 @@ class CPPN:
 
         # OBJECTIVE
         if self.my_config['train']:
-            self.loss = 1e5 * \
-                PerceptualLoss(self.my_config, self.output, self.target,
-                               style_layers=self.my_config['style_layers']
+            # self.style_loss = 1e5 * \
+            #     PerceptualLoss('PerceptualLoss_style',
+            #                    self.my_config, self.output, self.target,
+            #                    style_layers=self.my_config['style_layers']
+            #                                     .split(',')).style_loss
+            self.style_loss = tf.constant(0.0)
+            self.content_loss = 1e5 * \
+                PerceptualLoss('PerceptualLoss_content',
+                               self.my_config, self.output, self.target,
+                               style_layers=self.my_config['content_layers']
                                                 .split(',')).content_loss
 
             # Average loss over batch
-            self.loss = self.loss / tf.cast(self.batch_size, tf.float32)
+            self.loss = (self.content_loss + self.style_loss) / \
+                tf.cast(self.batch_size, tf.float32)
 
             self.build_summaries()
 

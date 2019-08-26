@@ -28,7 +28,7 @@ parser.add_argument('-dataset_dir', '--dataset_dir', default='dataset',
                     type=str)
 parser.add_argument('-id', '--run_id', default=time.strftime('%d%b-%X'),
                     type=str)
-parser.add_argument('-train', '--train', default=True, type=bool)
+parser.add_argument('-train', '--train', default=False, type=bool)
 parser.add_argument('-cppn', '--use_cppn', default=False, type=bool)
 parser.add_argument('-bfgs', '--use_bfgs', default=True, type=bool)
 
@@ -72,7 +72,7 @@ dataset_path = os.path.join(my_config['data_dir'],
 dataset = Dataset(training_path=dataset_path, config=my_config)
 
 # BUILD GRAPH
-if args.cppn:
+if args.use_cppn:
     cppn = CPPN(dataset=dataset,
                 tf_config=tf_config,
                 my_config=my_config)
@@ -83,7 +83,7 @@ else:
 
 if not args.train:
     # PREDICT
-    cppn.predict(os.path.join(my_config['snap_dir'], '748365'))
+    cppn.predict(os.path.join(my_config['snap_dir'], '846577'))
 else:
     # NOTE KEEPING
     notes_path = os.path.join(my_config['log_dir'], str(trial_id) + '.txt')

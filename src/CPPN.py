@@ -39,6 +39,9 @@ class CPPN:
                 self.index = self.next_batch[2]  # B
                 # B x latent size
                 self.latent_vector_feed = tf.one_hot(self.index, depth=2)
+                # self.latent_vector_feed = \
+                #     EmbeddingLayer('Embeddings', self.index,
+                #                    self.my_config['cppn_latent_size'], 38)
             else:
                 self.input_coord = \
                     tf.placeholder(tf.float32, shape=[None, None, None, 2])
@@ -101,20 +104,24 @@ class CPPN:
 
         # OBJECTIVE
         if self.my_config['train']:
-            # self.style_loss = 1e5 * \
+            # self.style_loss = \
             #     PerceptualLoss('PerceptualLoss_style',
             #                    self.my_config, self.output, self.target,
             #                    style_layers=self.my_config['style_layers']
-            #                                     .split(',')).style_loss
-            self.style_loss = tf.constant(0.0)
-            self.content_loss = 1e5 * \
+            #                                     .split(','))
+            # self.avg_style_loss = 1e9 * self.style_loss.avg_style_loss
+            # self.style_losses = self.style_loss.style_losses
+            self.avg_style_loss = tf.constant(0.0)
+            self.content_loss = \
                 PerceptualLoss('PerceptualLoss_content',
                                self.my_config, self.output, self.target,
-                               style_layers=self.my_config['content_layers']
-                                                .split(',')).content_loss
+                               content_layers=self.my_config['content_layers']
+                                                  .split(','))
+            self.avg_content_loss = 1e5 * self.content_loss.avg_content_loss
+            # self.content_losses = self.content_loss.content_losses
 
             # Average loss over batch
-            self.loss = (self.content_loss + self.style_loss) / \
+            self.loss = (self.avg_content_loss + self.avg_style_loss) / \
                 tf.cast(self.batch_size, tf.float32)
 
             self.build_summaries()
@@ -124,11 +131,17 @@ class CPPN:
             # Output and Target
             tf.summary.image('Output', tf.cast(self.output * 255.0, tf.uint8),
                              max_outputs=1)
-            tf.summary.image('Target', tf.cast(self.target * 255.0, tf.uint8),
+            tf.summary.image('Content_Target',
+                             tf.cast(self.target * 255.0, tf.uint8),
                              max_outputs=1)
+            # tf.summary.image('Style_Target',
+            #                  tf.cast(self.style_target * 255.0, tf.uint8),
+            #                  max_outputs=1)
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)
+            tf.summary.scalar('Style_Loss', self.avg_style_loss)
+            tf.summary.scalar('Content_Loss', self.avg_content_loss)
 
             # Merge all summaries
             self.summaries = tf.summary.merge_all()
@@ -154,8 +167,7 @@ class CPPN:
 
         with tf.Session(config=self.tf_config) as sess:
             resume, self.iterations_so_far = \
-                check_snapshots(self.my_config['run_id'],
-                                self.my_config['force_train_from_scratch'])
+                check_snapshots(self.my_config['run_id'])
             self.writer = tf.summary.FileWriter(
                 os.path.join(self.my_config['log_dir'],
                              self.my_config['run_id']), sess.graph)
@@ -247,13 +259,13 @@ class CPPN:
 
         with tf.Session(config=self.tf_config) as sess:
             saver.restore(sess, checkpoint_path)
-        
+
             input_coord = \
-                create_meshgrid_numpy(2000, 2000, -112, 112, -112, 112)
-            
+                create_meshgrid_numpy(225, 225, -112, 112, -112, 112)
+
             i = 0
-            for theta in np.linspace(0, 2 * np.pi, 1620):
-                latent_vector = np.array([[np.cos(theta), np.sin(theta)]],
+            for theta in np.linspace(0, 2*np.pi, 1):
+                latent_vector = np.array([[1, 0]],
                                          dtype='float32')
                 feed_dict = {self.input_coord: input_coord,
                              self.latent_vector_feed: latent_vector}

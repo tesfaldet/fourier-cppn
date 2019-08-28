@@ -3,7 +3,7 @@ import tensorflow as tf
 
 
 # From https://github.com/ryersonvisionlab/two-stream-dyntex-synth/blob/master/src/utilities.py#L50
-def check_snapshots(run_id, force_train_from_scratch=False):
+def check_snapshots(run_id):
     snapshots_folder = 'snapshots/' + run_id + '/'
     logs_folder = 'logs/' + run_id + '/'
 
@@ -18,10 +18,7 @@ def check_snapshots(run_id, force_train_from_scratch=False):
             print('Snapshot file detected (' + checkpoint +
                   ') would you like to resume? (y/n)')
 
-            if force_train_from_scratch:
-                choice = 'n'
-            else:
-                choice = input().lower()
+            choice = input().lower()
 
             if choice == 'y':
                 resume = checkpoint

@@ -6,9 +6,6 @@ from src.FourierCPPN import FourierCPPN
 from src.CPPN import CPPN
 from src.Dataset import Dataset
 
-# SHURIKEN IMPORTS
-from shuriken.utils import get_hparams
-
 
 # COMMAND LINE ARGS
 parser = argparse.ArgumentParser(description='training')
@@ -32,10 +29,6 @@ parser.add_argument('-train', '--train', default=True, type=bool)
 parser.add_argument('-cppn', '--use_cppn', default=False, type=bool)
 parser.add_argument('-bfgs', '--use_bfgs', default=True, type=bool)
 
-# Meant for training on Borgy when there's an existing snapshot and it needs
-# to be overridden, disregarding user input since it can't accept any
-parser.add_argument('--force_train_from_scratch', default=True, type=bool)
-
 args = parser.parse_args()
 
 # USER SETTINGS
@@ -55,11 +48,6 @@ my_config['dataset_dir'] = args.dataset_dir
 my_config['train'] = args.train
 my_config['force_train_from_scratch'] = args.force_train_from_scratch
 my_config['use_bfgs'] = args.use_bfgs
-
-# SHURIKEN MAGIC
-my_config.update(get_hparams())
-trial_id = os.environ.get('SHK_TRIAL_ID')
-my_config['run_id'] = str(trial_id)
 
 # GPU SETTINGS
 tf_config = tf.ConfigProto()
@@ -86,7 +74,8 @@ if not args.train:
     cppn.predict(os.path.join(my_config['snap_dir'], '846577'))
 else:
     # NOTE KEEPING
-    notes_path = os.path.join(my_config['log_dir'], str(trial_id) + '.txt')
+    notes_path = os.path.join(my_config['log_dir'],
+                              my_config['run_id'] + '.txt')
     with open(notes_path, 'w') as fp:
         notes = \
             '\n'.join('{!s}={!r}'.format(key, val) for (key, val)

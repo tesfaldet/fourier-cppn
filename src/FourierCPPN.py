@@ -178,11 +178,13 @@ class FourierCPPN:
 
         # OBJECTIVE
         if self.my_config['train']:
-            # self.avg_style_loss = 1e9 * \
+            # self.style_loss = \
             #     PerceptualLoss('PerceptualLoss_style',
             #                    self.my_config, self.output, self.target,
             #                    style_layers=self.my_config['style_layers']
-            #                                     .split(',')).avg_style_loss
+            #                                     .split(','))
+            # self.avg_style_loss = 1e9 * self.style_loss.avg_style_loss
+            # self.style_losses = self.style_loss.style_losses
             self.avg_style_loss = tf.constant(0.0)
             self.content_loss = \
                 PerceptualLoss('PerceptualLoss_content',
@@ -214,7 +216,6 @@ class FourierCPPN:
             tf.summary.scalar('Train_Loss', self.loss)
             tf.summary.scalar('Style_Loss', self.avg_style_loss)
             tf.summary.scalar('Content_Loss', self.avg_content_loss)
-            # tf.summary.scalar('pool4', self.content_losses['pool4'])
 
             # Merge all summaries
             self.summaries = tf.summary.merge_all()
@@ -240,8 +241,7 @@ class FourierCPPN:
 
         with tf.Session(config=self.tf_config) as sess:
             resume, self.iterations_so_far = \
-                check_snapshots(self.my_config['run_id'],
-                                self.my_config['force_train_from_scratch'])
+                check_snapshots(self.my_config['run_id'])
             self.writer = tf.summary.FileWriter(
                 os.path.join(self.my_config['log_dir'],
                              self.my_config['run_id']), sess.graph)
@@ -335,7 +335,7 @@ class FourierCPPN:
             saver.restore(sess, checkpoint_path)
 
             input_coord = \
-                create_meshgrid_numpy(500, 500, -112, 112, -112, 112)
+                create_meshgrid_numpy(225, 225, -112, 112, -112, 112)
 
             i = 0
             for theta in np.linspace(0, 2*np.pi, 1):

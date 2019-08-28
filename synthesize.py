@@ -28,6 +28,24 @@ parser.add_argument('-id', '--run_id', default=time.strftime('%d%b-%X'),
 parser.add_argument('-train', '--train', default=True, type=bool)
 parser.add_argument('-cppn', '--use_cppn', default=False, type=bool)
 parser.add_argument('-bfgs', '--use_bfgs', default=True, type=bool)
+parser.add_argument('--cppn_input_dimensions', default='225,225', type=str)
+parser.add_argument('--cppn_input_coordinate_range', default='112,112',
+                    type=str)
+parser.add_argument('--cppn_coord_scale_factor', default='(3**0.5)/112',
+                    type=str)
+parser.add_argument('--cppn_num_layers', default=8, type=int)
+parser.add_argument('--cppn_num_neurons', default=24, type=int)
+parser.add_argument('--cppn_activation', default='atan_concat', type=str)
+parser.add_argument('--cppn_latent_size', default=2, type=int)
+parser.add_argument('--style_layers',
+                    default='conv1_1/Relu,pool1,pool2,pool3,pool4',
+                    type=str)
+parser.add_argument('--content_layers',
+                    default='conv1_1/Relu,pool1,pool2,pool3,pool4',
+                    type=str)
+parser.add_argument('--cppn_fourier_dimensions', default='10,10', type=str)
+parser.add_argument('--cppn_fourier_coordinate_range', default='-5,4',
+                    type=str)
 
 args = parser.parse_args()
 
@@ -46,13 +64,25 @@ my_config['snap_dir'] = args.snapshot_dir
 my_config['data_dir'] = args.data_dir
 my_config['dataset_dir'] = args.dataset_dir
 my_config['train'] = args.train
-my_config['force_train_from_scratch'] = args.force_train_from_scratch
 my_config['use_bfgs'] = args.use_bfgs
+my_config['cppn_input_dimensions'] = args.cppn_input_dimensions
+my_config['cppn_input_coordinate_range'] = args.cppn_input_coordinate_range
+my_config['cppn_coord_scale_factor'] = args.cppn_coord_scale_factor
+my_config['cppn_num_layers'] = args.cppn_num_layers
+my_config['cppn_num_neurons'] = args.cppn_num_neurons
+my_config['cppn_activation'] = args.cppn_activation
+my_config['cppn_latent_size'] = args.cppn_latent_size
+my_config['style_layers'] = args.style_layers
+my_config['content_layers'] = args.content_layers
+my_config['cppn_fourier_dimensions'] = args.cppn_fourier_dimensions
+my_config['cppn_fourier_coordinate_range'] = args.cppn_fourier_coordinate_range
 
 # GPU SETTINGS
 tf_config = tf.ConfigProto()
 tf_config.gpu_options.allow_growth = True
 tf_config.allow_soft_placement = True
+os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 
 # DATASET SETUP
 dataset_path = os.path.join(my_config['data_dir'],

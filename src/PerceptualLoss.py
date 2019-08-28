@@ -31,32 +31,37 @@ class PerceptualLoss(object):
             vgg19_target = VGG19(self.my_config, 'VGG19_target',
                                  self.name, vgg_process(self.target))
 
-            self.style_loss = self._style_loss(vgg19_predicted,
-                                               vgg19_target,
-                                               self.style_layers)
-            self.content_loss = self._content_loss(vgg19_predicted,
-                                                   vgg19_target,
-                                                   self.content_layers)
+            self.avg_style_loss, self.style_losses = \
+                self._style_loss(vgg19_predicted,
+                                 vgg19_target,
+                                 self.style_layers)
+            self.avg_content_loss, self.content_losses = \
+                self._content_loss(vgg19_predicted,
+                                   vgg19_target,
+                                   self.content_layers)
 
     def _style_loss(self, vgg_predicted, vgg_target, style_layers):
         with tf.name_scope('StyleLoss'):
-            losses = []
+            losses = {}
             for l in style_layers:
                 loss = MSELayer(vgg_predicted.gramian_for_layer(l),
                                 vgg_target.gramian_for_layer(l))
-                losses.append(loss)
+                losses[l] = loss
             # return average style loss across layers
-            avg_style_loss = tf.add_n(losses) / tf.to_float(len(style_layers))
-            return avg_style_loss
+            avg_style_loss = \
+                tf.add_n(list(losses.values())) / \
+                tf.to_float(len(style_layers))
+            return avg_style_loss, losses
 
     def _content_loss(self, vgg_predicted, vgg_target, content_layers):
         with tf.name_scope('ContentLoss'):
-            losses = []
+            losses = {}
             for l in content_layers:
                 loss = MSELayer(vgg_predicted.activations_for_layer(l),
                                 vgg_target.activations_for_layer(l))
-                losses.append(loss)
+                losses[l] = loss
             # return average content loss across layers
             avg_content_loss = \
-                tf.add_n(losses) / tf.to_float(len(content_layers))
-            return avg_content_loss
+                tf.add_n(list(losses.values())) / \
+                tf.to_float(len(content_layers))
+            return avg_content_loss, losses

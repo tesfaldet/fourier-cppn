@@ -5,6 +5,8 @@ import os
 # Import layers
 from src.layers.ConvLayer import ConvLayer
 from src.layers.IDFTLayer import IDFTLayer
+from src.layers.EmbeddingLayer import EmbeddingLayer
+from src.layers.ResBlockLayer import ResBlockLayer
 
 # Import utilities
 from src.utils.create_meshgrid import create_meshgrid
@@ -41,6 +43,9 @@ class FourierCPPN:
                 self.index = self.next_batch[2]  # B
                 # B x latent size
                 self.latent_vector_feed = tf.one_hot(self.index, depth=2)
+                # self.latent_vector_feed = \
+                #     EmbeddingLayer('Embeddings', self.index,
+                #                    self.my_config['cppn_latent_size'], 38)
             else:
                 self.input_coord = \
                     tf.placeholder(tf.float32, shape=[None, None, None, 2])
@@ -144,7 +149,7 @@ class FourierCPPN:
             self.coeffs_b = ConvLayer('coefficients', colour_layer_b,
                                       self.fourier_basis_size * 2,
                                       activation=None)
-            
+
             # B x H x W x fourier_basis_size
             self.coeffs_r = tf.dtypes.complex(
                 self.coeffs_r[..., :self.fourier_basis_size],
@@ -173,20 +178,22 @@ class FourierCPPN:
 
         # OBJECTIVE
         if self.my_config['train']:
-            # self.style_loss = 1e5 * \
+            # self.avg_style_loss = 1e9 * \
             #     PerceptualLoss('PerceptualLoss_style',
             #                    self.my_config, self.output, self.target,
             #                    style_layers=self.my_config['style_layers']
-            #                                     .split(',')).style_loss
-            self.style_loss = tf.constant(0.0)
-            self.content_loss = 1e5 * \
+            #                                     .split(',')).avg_style_loss
+            self.avg_style_loss = tf.constant(0.0)
+            self.content_loss = \
                 PerceptualLoss('PerceptualLoss_content',
                                self.my_config, self.output, self.target,
-                               style_layers=self.my_config['content_layers']
-                                                .split(',')).content_loss
+                               content_layers=self.my_config['content_layers']
+                                                  .split(','))
+            self.avg_content_loss = 1e5 * self.content_loss.avg_content_loss
+            # self.content_losses = self.content_loss.content_losses
 
             # Average loss over batch
-            self.loss = (self.content_loss + self.style_loss) / \
+            self.loss = (self.avg_content_loss + self.avg_style_loss) / \
                 tf.cast(self.batch_size, tf.float32)
 
             self.build_summaries()
@@ -205,8 +212,9 @@ class FourierCPPN:
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)
-            tf.summary.scalar('Style_Loss', self.style_loss)
-            tf.summary.scalar('Content_Loss', self.content_loss)
+            tf.summary.scalar('Style_Loss', self.avg_style_loss)
+            tf.summary.scalar('Content_Loss', self.avg_content_loss)
+            # tf.summary.scalar('pool4', self.content_losses['pool4'])
 
             # Merge all summaries
             self.summaries = tf.summary.merge_all()
@@ -327,15 +335,10 @@ class FourierCPPN:
             saver.restore(sess, checkpoint_path)
 
             input_coord = \
-                create_meshgrid_numpy(1000, 1000, -112, 112, -112, 112)
-
-            # fixed_jitter = np.random.normal(0, 1.0, size=(1, 528, 779, 2))
+                create_meshgrid_numpy(500, 500, -112, 112, -112, 112)
 
             i = 0
             for theta in np.linspace(0, 2*np.pi, 1):
-                # jitter = np.random.normal(0, 1.0, size=(1, 533, 400, 2))
-                # undulate = fixed_jitter * (5 * np.sin(theta))
-                # zoom = 0.05*np.sin(theta) + 1
                 latent_vector = np.array([[1, 0]],
                                          dtype='float32')
                 feed_dict = {self.input_coord: input_coord,

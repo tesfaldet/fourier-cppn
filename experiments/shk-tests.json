@@ -1,10 +1,10 @@
 {
-    "title": "texture-cppn",
+    "title": "fourier-cppn",
     "worker_config": {
         "memory": 8,
         "cpu": 2,
         "gpu": 1,
-        "volumes": ["/mnt/projects/texture-cppn/logs:/logs", "/mnt/projects/texture-cppn/snapshots:/snapshots", "/mnt/datasets/public/texture-cppn/data:/data"]
+        "volumes": ["/mnt/projects/fourier-cppn/logs:/logs", "/mnt/projects/fourier-cppn/snapshots:/snapshots", "/mnt/datasets/public/fourier-cppn/data:/data"]
     },
     "parameters": {
         "name": "GridSearch",

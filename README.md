@@ -1,5 +1,5 @@
-# Improving the Realism of CPPN-based Image Parameterizations via Differentiable Texture Mapping
-TensorFlow implementation of "Improving the Realism of CPPN-based Image Parameterizations via Differentiable Texture Mapping" (2019)
+# Fourier-CPPNs for Image Synthesis
+TensorFlow implementation of "Fourier-CPPNs for Image Synthesis" (2019). Presented at the Second Workshop on Computer Vision for Fashion, Art, and Design at ICCV '19.
 
 ## Setup (CPU-version on Mac)
 ```
@@ -17,11 +17,16 @@ Install pipenv
 $ brew install pipenv
 
 Install all dependencies for this project (including dev):
-$ cd texture-cppn
+$ cd fourier-cppn
 $ pipenv install --dev
 
 Activate this project's virtualenv:
 $ pipenv shell
+```
+
+## Usage (Requires [Shuriken](https://github.com/ElementAI/shuriken-client))
+```
+$ saga submit --file docker/Dockerfile --verbose --config experiments/shk-tests.json
 ```
 
 ### If using the [fish shell](https://github.com/fish-shell/fish-shell)

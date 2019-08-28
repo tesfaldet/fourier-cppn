@@ -3,7 +3,7 @@ import time
 import argparse
 import tensorflow as tf
 from src.FourierCPPN import FourierCPPN
-from src.RGBCPPN import RGBCPPN
+from src.CPPN import CPPN
 from src.Dataset import Dataset
 
 # SHURIKEN IMPORTS
@@ -18,7 +18,7 @@ parser.add_argument('-i', '--iterations', default=100000, type=int)
 parser.add_argument('-lr', '--learning_rate', default=5e-4, type=float)
 parser.add_argument('-logf', '--log_frequency', default=10, type=int)
 parser.add_argument('-printf', '--print_frequency', default=10, type=int)
-parser.add_argument('-snapf', '--snapshot_frequency', default=1000, type=int)
+parser.add_argument('-snapf', '--snapshot_frequency', default=2000, type=int)
 parser.add_argument('-writef', '--write_frequency', default=100, type=int)
 parser.add_argument('-log_dir', '--log_dir', default='logs', type=str)
 parser.add_argument('-snap_dir', '--snapshot_dir',
@@ -29,7 +29,7 @@ parser.add_argument('-dataset_dir', '--dataset_dir', default='dataset',
 parser.add_argument('-id', '--run_id', default=time.strftime('%d%b-%X'),
                     type=str)
 parser.add_argument('-train', '--train', default=True, type=bool)
-parser.add_argument('-rgb_cppn', '--rgb_cppn', default=False, type=bool)
+parser.add_argument('-cppn', '--use_cppn', default=False, type=bool)
 parser.add_argument('-bfgs', '--use_bfgs', default=True, type=bool)
 
 # Meant for training on Borgy when there's an existing snapshot and it needs
@@ -66,20 +66,24 @@ tf_config = tf.ConfigProto()
 tf_config.gpu_options.allow_growth = True
 tf_config.allow_soft_placement = True
 
+# DATASET SETUP
+dataset_path = os.path.join(my_config['data_dir'],
+                            my_config['dataset_dir'])
+dataset = Dataset(training_path=dataset_path, config=my_config)
+
 # BUILD GRAPH
-if args.rgb_cppn:
-    cppn = RGBCPPN(tf_config=tf_config, my_config=my_config)
+if args.use_cppn:
+    cppn = CPPN(dataset=dataset,
+                tf_config=tf_config,
+                my_config=my_config)
 else:
-    dataset_path = os.path.join(my_config['data_dir'],
-                                my_config['dataset_dir'])
-    dataset = Dataset(training_path=dataset_path, config=my_config)
     cppn = FourierCPPN(dataset=dataset,
                        tf_config=tf_config,
                        my_config=my_config)
 
 if not args.train:
     # PREDICT
-    cppn.predict(os.path.join(my_config['snap_dir'], '653520'))
+    cppn.predict(os.path.join(my_config['snap_dir'], '846577'))
 else:
     # NOTE KEEPING
     notes_path = os.path.join(my_config['log_dir'], str(trial_id) + '.txt')

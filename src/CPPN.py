@@ -4,12 +4,8 @@ import os
 
 # Import layers
 from src.layers.ConvLayer import ConvLayer
-from src.layers.IDFTLayer import IDFTLayer
-from src.layers.EmbeddingLayer import EmbeddingLayer
-from src.layers.ResBlockLayer import ResBlockLayer
 
 # Import utilities
-from src.utils.create_meshgrid import create_meshgrid
 from src.utils.create_meshgrid_numpy import create_meshgrid_numpy
 from src.utils.check_snapshots import check_snapshots
 from src.utils.write_images import write_images
@@ -18,7 +14,7 @@ from src.utils.write_images import write_images
 from src.PerceptualLoss import PerceptualLoss
 
 
-class FourierCPPN:
+class CPPN:
     def __init__(self,
                  dataset,
                  my_config,
@@ -27,7 +23,7 @@ class FourierCPPN:
         self.tf_config = tf_config
         self.my_config = my_config
         self.build_graph()
-        print('Fourier CPPN Num Variables: ',
+        print('CPPN Num Variables: ',
               np.sum([np.product([xi.value for xi in x.get_shape()])
                       for x in tf.global_variables()]))
 
@@ -43,9 +39,6 @@ class FourierCPPN:
                 self.index = self.next_batch[2]  # B
                 # B x latent size
                 self.latent_vector_feed = tf.one_hot(self.index, depth=2)
-                # self.latent_vector_feed = \
-                #     EmbeddingLayer('Embeddings', self.index,
-                #                    self.my_config['cppn_latent_size'], 38)
             else:
                 self.input_coord = \
                     tf.placeholder(tf.float32, shape=[None, None, None, 2])
@@ -80,24 +73,6 @@ class FourierCPPN:
             self.input.set_shape([None, None, None,
                                   2 + self.my_config['cppn_latent_size']])
 
-        with tf.name_scope('Fourier_Coordinates'):
-            self.f_dimensions = \
-                self.my_config['cppn_fourier_dimensions'].split(',')
-            self.f_width = int(self.f_dimensions[0])
-            self.f_height = int(self.f_dimensions[1])
-            self.fourier_coord_range = \
-                self.my_config['cppn_fourier_coordinate_range'].split(',')
-            self.fourier_coord_min = eval(self.fourier_coord_range[0])
-            self.fourier_coord_max = eval(self.fourier_coord_range[1])
-            self.fourier_basis_size = self.f_width * self.f_height
-
-            # B x H_f x W_f x 2
-            self.fourier_coord = \
-                create_meshgrid(self.f_width, self.f_height,
-                                self.fourier_coord_min, self.fourier_coord_max,
-                                self.fourier_coord_min, self.fourier_coord_max,
-                                batch_size=self.batch_size)
-
         # CPPN OUTPUT
         with tf.name_scope('CPPN'):
             self.cppn_layers = [('input', self.input)]
@@ -111,9 +86,6 @@ class FourierCPPN:
                       .random_normal(0, tf.sqrt(1.0 / prev_num_channels))
                 out_channels = self.my_config['cppn_num_neurons']
                 activation = self.my_config['cppn_activation']
-                if (i + 1) == self.my_config['cppn_num_layers']:
-                    out_channels *= 3  # for RGB
-                    activation = 'atan'
                 layer = \
                     ConvLayer(layer_name, prev_layer,
                               out_channels=out_channels,
@@ -122,78 +94,27 @@ class FourierCPPN:
                               trainable=trainable)
                 self.cppn_layers.append((layer_name, layer))
 
-            # Split activations into thirds, each corresponding to a colour
-            # channel.
-            # B x H x W x (cppn_num_neurons x 3) ->
-            # B x H x W x cppn_num_neurons
-            colour_layer = self.cppn_layers[-1][1] / 0.67
-            colour_layer_r = \
-                colour_layer[...,
-                             :self.my_config['cppn_num_neurons']]
-            colour_layer_g = \
-                colour_layer[...,
-                             self.my_config['cppn_num_neurons']:
-                             self.my_config['cppn_num_neurons']*2]
-            colour_layer_b = \
-                colour_layer[...,
-                             self.my_config['cppn_num_neurons']*2:
-                             self.my_config['cppn_num_neurons']*3]
-
-            # B x H x W x (fourier_basis_size x 2)
-            self.coeffs_r = ConvLayer('coefficients', colour_layer_r,
-                                      self.fourier_basis_size * 2,
-                                      activation=None)
-            self.coeffs_g = ConvLayer('coefficients', colour_layer_g,
-                                      self.fourier_basis_size * 2,
-                                      activation=None)
-            self.coeffs_b = ConvLayer('coefficients', colour_layer_b,
-                                      self.fourier_basis_size * 2,
-                                      activation=None)
-
-            # B x H x W x fourier_basis_size
-            self.coeffs_r = tf.dtypes.complex(
-                self.coeffs_r[..., :self.fourier_basis_size],
-                self.coeffs_r[..., self.fourier_basis_size:])
-            self.coeffs_g = tf.dtypes.complex(
-                self.coeffs_g[..., :self.fourier_basis_size],
-                self.coeffs_g[..., self.fourier_basis_size:])
-            self.coeffs_b = tf.dtypes.complex(
-                self.coeffs_b[..., :self.fourier_basis_size],
-                self.coeffs_b[..., self.fourier_basis_size:])
-
-        with tf.name_scope('IDFT'):
-            # Each output is B x H x W x 1
-            self.output_r = IDFTLayer('output_r', self.input_coord,
-                                      self.fourier_coord, self.coeffs_r)
-            self.output_g = IDFTLayer('output_g', self.input_coord,
-                                      self.fourier_coord, self.coeffs_g)
-            self.output_b = IDFTLayer('output_b', self.input_coord,
-                                      self.fourier_coord, self.coeffs_b)
-
         with tf.name_scope('Output'):
             # Construct RGB output B x H x W x 3
-            self.output = tf.sigmoid(tf.concat([self.output_r,
-                                                self.output_g,
-                                                self.output_b], axis=-1))
+            self.output = ConvLayer('rgb', self.cppn_layers[-1][1],
+                                    3, activation='sigmoid')
 
         # OBJECTIVE
         if self.my_config['train']:
-            # self.avg_style_loss = 1e9 * \
+            # self.style_loss = 1e5 * \
             #     PerceptualLoss('PerceptualLoss_style',
             #                    self.my_config, self.output, self.target,
             #                    style_layers=self.my_config['style_layers']
-            #                                     .split(',')).avg_style_loss
-            self.avg_style_loss = tf.constant(0.0)
-            self.content_loss = \
+            #                                     .split(',')).style_loss
+            self.style_loss = tf.constant(0.0)
+            self.content_loss = 1e5 * \
                 PerceptualLoss('PerceptualLoss_content',
                                self.my_config, self.output, self.target,
-                               content_layers=self.my_config['content_layers']
-                                                  .split(','))
-            self.avg_content_loss = 1e5 * self.content_loss.avg_content_loss
-            # self.content_losses = self.content_loss.content_losses
+                               style_layers=self.my_config['content_layers']
+                                                .split(',')).content_loss
 
             # Average loss over batch
-            self.loss = (self.avg_content_loss + self.avg_style_loss) / \
+            self.loss = (self.content_loss + self.style_loss) / \
                 tf.cast(self.batch_size, tf.float32)
 
             self.build_summaries()
@@ -203,18 +124,11 @@ class FourierCPPN:
             # Output and Target
             tf.summary.image('Output', tf.cast(self.output * 255.0, tf.uint8),
                              max_outputs=1)
-            tf.summary.image('Content_Target',
-                             tf.cast(self.target * 255.0, tf.uint8),
+            tf.summary.image('Target', tf.cast(self.target * 255.0, tf.uint8),
                              max_outputs=1)
-            # tf.summary.image('Style_Target',
-            #                  tf.cast(self.style_target * 255.0, tf.uint8),
-            #                  max_outputs=1)
 
             # Losses
             tf.summary.scalar('Train_Loss', self.loss)
-            tf.summary.scalar('Style_Loss', self.avg_style_loss)
-            tf.summary.scalar('Content_Loss', self.avg_content_loss)
-            # tf.summary.scalar('pool4', self.content_losses['pool4'])
 
             # Merge all summaries
             self.summaries = tf.summary.merge_all()
@@ -333,13 +247,13 @@ class FourierCPPN:
 
         with tf.Session(config=self.tf_config) as sess:
             saver.restore(sess, checkpoint_path)
-
+        
             input_coord = \
-                create_meshgrid_numpy(500, 500, -112, 112, -112, 112)
-
+                create_meshgrid_numpy(2000, 2000, -112, 112, -112, 112)
+            
             i = 0
-            for theta in np.linspace(0, 2*np.pi, 1):
-                latent_vector = np.array([[1, 0]],
+            for theta in np.linspace(0, 2 * np.pi, 1620):
+                latent_vector = np.array([[np.cos(theta), np.sin(theta)]],
                                          dtype='float32')
                 feed_dict = {self.input_coord: input_coord,
                              self.latent_vector_feed: latent_vector}

@@ -4,6 +4,7 @@
 *.png
 *.mov
 *.mp4
+*.gif
 
 # Visualstudio
 .vscode/

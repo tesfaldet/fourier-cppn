@@ -10,14 +10,14 @@ my_config['batch_size'] = 1
 my_config['learning_rate'] = 5e-4
 my_config['write_frequency'] = 100
 my_config['snapshot_frequency'] = 1000
-my_config['print_frequency'] = 10
-my_config['log_frequency'] = 10
+my_config['print_frequency'] = 1
+my_config['log_frequency'] = 1
 my_config['iterations'] = 100000
 my_config['log_dir'] = 'logs'
 my_config['snap_dir'] = 'snapshots'
 my_config['data_dir'] = 'data'
 my_config['dataset_dir'] = 'dataset'
-my_config['train'] = False
+my_config['train'] = True
 my_config['force_train_from_scratch'] = True
 my_config['use_bfgs'] = True
 my_config['run_id'] = 'test'
@@ -32,7 +32,7 @@ my_config['cppn_latent_size'] = 10
 my_config['style_layers'] = 'conv1_1/Relu,pool1,pool2,pool3,pool4'
 my_config['content_layers'] = 'conv1_1/Relu,pool1,pool2,pool3,pool4'
 my_config['cppn_fourier_dimensions'] = '10,10'
-my_config['cppn_fourier_coordinate_range'] = '0,9'
+my_config['cppn_fourier_coordinate_range'] = '-5,4'
 
 # GPU SETTINGS
 tf_config = tf.ConfigProto()
@@ -49,7 +49,7 @@ cppn = FourierCPPN(dataset=dataset,
 
 if not my_config['train']:
     # PREDICT
-    cppn.predict(os.path.join(my_config['snap_dir'], '697456'))
+    cppn.predict(os.path.join(my_config['snap_dir'], '742685'))
 else:
     # TRAIN
     cppn.train()

@@ -38,5 +38,7 @@ def ConvLayer(name, input, out_channels, in_channels=None,
             y = tf.nn.sigmoid(y)
         elif activation == 'tanh':
             y = tf.nn.tanh(y)
+        elif activation == 'tanh2':
+            y = tf.nn.tanh(y) ** 2
 
         return y
